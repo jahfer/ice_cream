@@ -36,7 +36,9 @@ let parse_buf_to_ast lexbuf =
   in
 
   let untyped_ast : 'a Ast.expression list = build_untyped_ast lexbuf [] in
-  List.iter (fun ast -> Printf.printf "%a\n" Ast.AstPrinter.print_cexpr ast) untyped_ast
+  untyped_ast
+  |> List.rev
+  |> List.iter (fun ast -> Printf.printf "%a\n" Ast.AstPrinter.print_cexpr ast)
 
 let parse_from_filename filename =
   let inx = Core.In_channel.create filename in

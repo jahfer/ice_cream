@@ -1,6 +1,6 @@
 
 FORMAT ?= exe
-FILE ?= data/test_simple.rb
+FILE ?= data/test_kitchen_sink.rb
 
 build:
 	dune build bin/cli.$(FORMAT)
