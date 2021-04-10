@@ -1,0 +1,3 @@
+true: package(cmdliner), package(stdio)
+true: thread,debug,annot
+"src": include

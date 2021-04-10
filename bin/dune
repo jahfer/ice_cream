@@ -1,0 +1,4 @@
+(executable
+  (name cli)
+  (libraries cmdliner ice_cream)
+  (modes byte exe))

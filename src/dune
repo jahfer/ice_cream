@@ -1,0 +1,7 @@
+(include_subdirs unqualified)
+
+(library
+  (name ice_cream)
+  (public_name ice_cream)
+  (flags :standard -warn-error A)
+  (libraries core))
