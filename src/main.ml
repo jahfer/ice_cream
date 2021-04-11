@@ -1,5 +1,5 @@
 open Lexing
-open Lexer
+open Syntax_tree.Lexer
 
 let init_state () : lex_state = {
   pending_termination = false;
@@ -17,11 +17,11 @@ let print_position outx lexbuf =
     pos.pos_lnum (pos.pos_cnum - pos.pos_bol + 1)
 
 let parse_with_error lexbuf =
-  try Parser.prog (Lexer.read state) lexbuf with
-  | Lexer.SyntaxError msg ->
+  try Syntax_tree.Parser.prog (Syntax_tree.Lexer.read state) lexbuf with
+  | Syntax_tree.Lexer.SyntaxError msg ->
     Format.fprintf Format.std_formatter "%a: %s\n" print_position lexbuf msg;
     None
-  | Parser.Error ->
+  | Syntax_tree.Parser.Error ->
     let tok = Lexing.lexeme lexbuf in
     Format.fprintf Format.std_formatter "%a: syntax error ('%s')\n" print_position lexbuf tok;
     exit (-1)
@@ -35,10 +35,10 @@ let parse_buf_to_ast lexbuf =
     | None -> acc
   in
 
-  let untyped_ast : 'a Ast.expression list = build_untyped_ast lexbuf [] in
+  let untyped_ast : 'a Syntax_tree.Ast.expression list = build_untyped_ast lexbuf [] in
   untyped_ast
   |> List.rev
-  |> List.iter (fun ast -> Printf.printf "%a\n" Ast.AstPrinter.print_cexpr ast)
+  |> List.iter (fun ast -> Printf.printf "%a\n" Syntax_tree.Ast.AstPrinter.print_cexpr ast)
 
 let parse_from_filename filename =
   let inx = Core.In_channel.create filename in

@@ -1,5 +1,5 @@
 open OUnit2
-open Ice_cream.Biunification
+open Ice_cream.Types
 
 let test_input_constraint _ =
   let constriant = Ruby.(Literal TInt) in

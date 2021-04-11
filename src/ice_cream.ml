@@ -1,3 +1,3 @@
-module Biunification = Biunification
+module Types = Types
 
 include Main
