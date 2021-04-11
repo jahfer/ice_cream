@@ -11,18 +11,21 @@ type value =
 
 and id = string * value
 
+and nesting = id list
+
 and 'a expr =
   | ExprCall of 'a expression * string * 'a expression list (* receiver, method, args *)
   | ExprFunc of string * id list * 'a expression (* name, args, body *)
   | ExprLambda of id list * 'a expression (* args, body *)
   | ExprValue of value
   | ExprVar of id
-  | ExprConst of id * 'a expression
+  | ExprConst of id * nesting
   | ExprIVar of id
   | ExprAssign of string * 'a expression
   | ExprIVarAssign of string * 'a expression
   | ExprConstAssign of string * 'a expression
   | ExprBlock of 'a expression * 'a expression
+  | ExprEmptyBlock
 
 and 'a expression = 'a expr * 'a
 
@@ -33,8 +36,8 @@ let rec replace_metadata fn expr meta =
       ExprFunc (name, args, swap_meta body_expr body_meta)
     | ExprLambda (args, (body_expr, body_meta)) ->
       ExprLambda (args, swap_meta body_expr body_meta)
-    | ExprConst (name, (c_expr, c_meta)) ->
-      ExprConst (name, swap_meta c_expr c_meta)
+    | ExprConst (name, nesting) ->
+      ExprConst (name, nesting)
     | ExprAssign (name, (a_expr, a_meta)) ->
       ExprAssign (name, swap_meta a_expr a_meta)
     | ExprIVarAssign (name, (a_expr, a_meta)) ->
@@ -52,6 +55,7 @@ let rec replace_metadata fn expr meta =
       let a = swap_meta expr_a meta_a
       and b = swap_meta expr_b meta_b
       in ExprBlock (a, b)
+    | ExprEmptyBlock -> ExprEmptyBlock
   in fn new_expr meta
 
 module AstPrinter = struct
@@ -70,8 +74,8 @@ module AstPrinter = struct
       printf "(lambda %a %a)" print_args args print_cexpr body
     | ExprVar ((name, _value))  ->
       printf "(lvar `%s)" name
-    | ExprConst ((name, _value), base) ->
-      printf "(const %a `%s)" print_cexpr base name
+    | ExprConst ((name, _value), nesting) ->
+      printf "(const (nesting [%a]) `%s)" print_nesting nesting name
     | ExprIVar ((name, _value)) ->
       printf "(ivar `%s)" name
     | ExprAssign (name, expr) ->
@@ -84,10 +88,12 @@ module AstPrinter = struct
       printf "%a" print_value value
     | ExprBlock (expr1, expr2) ->
       printf "%a %a" print_cexpr expr1 print_cexpr expr2
+    | ExprEmptyBlock ->
+      printf "()"
 
   and print_value outc = function
     | Hash obj     -> print_hash outc obj
-    | Array l      -> printf "[%a]" print_list l
+    | Array l      -> printf "[%a]" print_value_list l
     | String s     -> printf "\"%s\"" s
     | Symbol s     -> printf ":%s" s
     | Int i        -> printf "%d" i
@@ -113,9 +119,15 @@ module AstPrinter = struct
         printf "%a: %a" print_value key print_value value) obj;
     Out_channel.output_string outc " }"
 
-  and print_list outc arr =
+  and print_value_list outc lst =
     List.iteri ~f:(fun i v ->
         if i > 0 then
           Out_channel.output_string outc " ";
-        print_value outc v) arr
+        print_value outc v) lst
+
+  and print_nesting outc lst =
+    List.iteri ~f:(fun i (name, _value) ->
+        if i > 0 then
+          Out_channel.output_string outc " ";
+        printf "%s" name) lst
 end

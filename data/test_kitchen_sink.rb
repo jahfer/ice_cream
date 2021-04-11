@@ -1,6 +1,8 @@
 foo
 45
 
+# comment
+
 params = {
   "key": true,
   "another": "value"
@@ -11,6 +13,7 @@ params = {
 
 FooBar = 151.56
 FooBar
+M1::M2::Baz
 
 stmt1 = 3; stmt2 = 1
 
@@ -47,3 +50,5 @@ maybe_sum(3, 5, false)
 -> (local, _x) {
   local.first
 }
+
+class Foo; end

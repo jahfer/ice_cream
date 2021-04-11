@@ -41,7 +41,7 @@ let white = [' ' '\t']+
 let newline = '\r' | '\n' | "\r\n"
 let id =  ['a'-'z' '_'] ['a'-'z' 'A'-'Z' '0'-'9' '_']*
 let ivar = ['@'] id
-let const = ['A'-'Z'] ['a'-'z' 'A'-'Z' '_']*
+let const = ['A'-'Z'] ['a'-'z' 'A'-'Z' '_' '0'-'9']*
 
 rule read state = parse
   | white    { read state lexbuf }
@@ -54,6 +54,7 @@ rule read state = parse
       end
   }
   | "def"    { newline_agnostic_tok state; DEF }
+  | "class"  { newline_agnostic_tok state; CLASSDEF }
   | "->"     {
       ack_tok state;
       state.lambda_stack <- (state.paren_level :: state.lambda_stack);
@@ -63,6 +64,7 @@ rule read state = parse
     state.fn_call <- true; ack_tok state; DOT
   }
   | '"'      { ack_tok state; read_string (Buffer.create 17) lexbuf }
+  | "::"     { ack_tok state; NAMESPACE }
   | ':'      { ack_tok state; COLON }
   | ';'      { ack_tok state; EOS }
   | ','      { ack_tok state; COMMA }
@@ -102,7 +104,7 @@ rule read state = parse
 and comment state = parse
 | newline {
   Lexing.new_line lexbuf;
-  state.at_eos <- true; EOS
+  read state lexbuf
 }
 | _ { comment state lexbuf }
 

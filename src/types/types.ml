@@ -1,3 +1,3 @@
 module Ruby = Ruby
 
-include Type_variable
+include Constrained_type

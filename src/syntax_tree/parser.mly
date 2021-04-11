@@ -1,3 +1,4 @@
+%token NAMESPACE
 %token <int> INT
 %token <float> FLOAT
 %token <string> STRING
@@ -7,7 +8,7 @@
 %token EOS EOF
 %token <string> ID FID IVAR
 %token <string> CONST
-%token EQ DEF END LAMBDA DOT
+%token EQ DEF END LAMBDA DOT CLASSDEF
 
 %{
   open Ast
@@ -41,9 +42,10 @@ statement:
   | ref = iv_identifier          {
     ExprIVar(ref) |> loc_annot $symbolstartpos $endpos
   }
-  | c = CONST                    {
-    let sub_expr = ExprValue(Nil) |> loc_annot $symbolstartpos $endpos in
-    ExprConst((c, Any), sub_expr) |> loc_annot $symbolstartpos $endpos
+  | c = const                    {
+    let (const, nesting) = c in
+    let nesting_t = List.map (fun x -> (x, Any)) nesting in
+    ExprConst((const, Any), nesting_t) |> loc_annot $symbolstartpos $endpos
   }
   | id = ID EQ v = rhs_assign    {
     ExprAssign(id, v) |> loc_annot $symbolstartpos $endpos
@@ -65,9 +67,10 @@ rhs_assign:
   ;
 
 expr:
-  | c = command_call { c }
+  | c = command_call  { c }
   | LAMBDA l = lambda { l }
-  | f = func     { f }
+  | f = func          { f }
+  | c = cls         { c }
   ;
 
 command_call:
@@ -118,6 +121,17 @@ func:
   }
   ;
 
+cls:
+  | CLASSDEF c = CONST EOS? END {
+    let empty_body = ExprEmptyBlock |> loc_annot $symbolstartpos $endpos in
+    ExprConstAssign(c, empty_body) |> loc_annot $symbolstartpos $endpos
+  }
+  | CLASSDEF c = CONST EOS? body = statement statement_end? END {
+    let empty_body = ExprEmptyBlock |> loc_annot $symbolstartpos $endpos in
+    let body = ExprBlock(body, empty_body) |> loc_annot $symbolstartpos $endpos in
+    ExprConstAssign(c, body) |> loc_annot $symbolstartpos $endpos
+  }
+
 primitive:
   | LBRACE obj = obj_fields RBRACE { Hash obj }
   | LBRACK vl = list_fields RBRACK { Array vl }
@@ -162,3 +176,22 @@ obj_field:
 
 list_fields:
   vl = separated_list(COMMA, primitive)     { vl } ;
+
+const:
+  | NAMESPACE clist = separated_nonempty_list(NAMESPACE, CONST) {
+    match clist with
+    | [] -> $syntaxerror
+    | c :: [] -> (c, [])
+    | c :: ns -> let nesting = List.fold_left (fun acc const ->
+      (String.concat "::" (const :: acc)) :: acc
+    ) [] ns in (c, nesting)
+  }
+  | clist = separated_nonempty_list(NAMESPACE, CONST) {
+    match List.rev clist with
+    | [] -> $syntaxerror
+    | c :: [] -> (c, [])
+    | c :: ns -> let nesting = List.fold_left (fun acc const ->
+      (String.concat "::" @@ List.rev (const :: acc)) :: acc
+    ) [] (List.rev ns) in (c, nesting)
+  }
+  ;
