@@ -26,6 +26,7 @@ and 'a expr =
   | ExprConstAssign of string * nesting * 'a expression
   | ExprBlock of 'a expression * 'a expression
   | ExprClassBody of 'a expression
+  | ExprModuleBody of 'a expression
   | ExprEmptyBlock
 
 and 'a expression = 'a expr * 'a
@@ -59,6 +60,8 @@ let rec replace_metadata fn expr meta =
     | ExprEmptyBlock -> ExprEmptyBlock
     | ExprClassBody((expr, meta)) ->
       ExprClassBody (swap_meta expr meta)
+    | ExprModuleBody((expr, meta)) ->
+      ExprModuleBody (swap_meta expr meta)
   in fn new_expr meta
 
 module AstPrinter = struct
@@ -93,6 +96,8 @@ module AstPrinter = struct
       printf "%a %a" print_cexpr expr1 print_cexpr expr2
     | ExprClassBody(expr) ->
       printf "(class %a)" print_cexpr expr
+    | ExprModuleBody(expr) ->
+      printf "(module %a)" print_cexpr expr
     | ExprEmptyBlock ->
       printf "()"
 

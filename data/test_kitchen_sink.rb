@@ -58,3 +58,13 @@ class Foo::Bar
     45
   end
 end
+
+module Foo::Bar::Baz; end
+
+module M1
+  class M2
+    def sum1(thing)
+      45
+    end
+  end
+end

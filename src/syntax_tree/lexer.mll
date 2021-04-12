@@ -55,6 +55,7 @@ rule read state = parse
   }
   | "def"    { newline_agnostic_tok state; DEF }
   | "class"  { newline_agnostic_tok state; CLASSDEF }
+  | "module" { newline_agnostic_tok state; MODDEF }
   | "->"     {
       ack_tok state;
       state.lambda_stack <- (state.paren_level :: state.lambda_stack);

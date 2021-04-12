@@ -8,7 +8,7 @@
 %token EOS EOF
 %token <string> ID FID IVAR
 %token <string> CONST
-%token EQ DEF END LAMBDA DOT CLASSDEF
+%token EQ DEF END LAMBDA DOT CLASSDEF MODDEF
 
 %{
   open Ast
@@ -62,6 +62,7 @@ statement:
     ExprValue(p) |> loc_annot $symbolstartpos $endpos
   }
   | c = class_def                { c }
+  | m = mod_def                  { m }
   | e = expr                     { e }
   ;
 
@@ -137,6 +138,23 @@ class_def:
     let empty_body = ExprEmptyBlock |> loc_annot $symbolstartpos $endpos in
     let body = ExprBlock(body, empty_body) |> loc_annot $symbolstartpos $endpos in
     let class_body = ExprClassBody(body) |> loc_annot $symbolstartpos $endpos in
+    ExprConstAssign(c, nesting_t, class_body) |> loc_annot $symbolstartpos $endpos
+  }
+
+mod_def:
+  | MODDEF cls = const EOS? END {
+    let (c, nesting) = cls in
+    let nesting_t = List.map (fun x -> (x, Any)) nesting in
+    let empty_body = ExprEmptyBlock |> loc_annot $symbolstartpos $endpos in
+    let class_body = ExprModuleBody(empty_body) |> loc_annot $symbolstartpos $endpos in
+    ExprConstAssign(c, nesting_t, class_body) |> loc_annot $symbolstartpos $endpos
+  }
+  | MODDEF cls = const EOS? body = statement statement_end? END {
+    let (c, nesting) = cls in
+    let nesting_t = List.map (fun x -> (x, Any)) nesting in
+    let empty_body = ExprEmptyBlock |> loc_annot $symbolstartpos $endpos in
+    let body = ExprBlock(body, empty_body) |> loc_annot $symbolstartpos $endpos in
+    let class_body = ExprModuleBody(body) |> loc_annot $symbolstartpos $endpos in
     ExprConstAssign(c, nesting_t, class_body) |> loc_annot $symbolstartpos $endpos
   }
 
