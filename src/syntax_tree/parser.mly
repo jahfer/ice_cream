@@ -53,8 +53,10 @@ statement:
   | id = IVAR EQ v = rhs_assign  {
     ExprIVarAssign(id, v) |> loc_annot $symbolstartpos $endpos
   }
-  | c = CONST EQ v = rhs_assign  {
-    ExprConstAssign(c, v) |> loc_annot $symbolstartpos $endpos
+  | cls = const EQ v = rhs_assign  {
+    let (c, nesting) = cls in
+    let nesting_t = List.map (fun x -> (x, Any)) nesting in
+    ExprConstAssign(c, nesting_t, v) |> loc_annot $symbolstartpos $endpos
   }
   | p = primitive                {
     ExprValue(p) |> loc_annot $symbolstartpos $endpos
@@ -122,16 +124,20 @@ func:
   ;
 
 class_def:
-  | CLASSDEF c = CONST EOS? END {
+  | CLASSDEF cls = const EOS? END {
+    let (c, nesting) = cls in
+    let nesting_t = List.map (fun x -> (x, Any)) nesting in
     let empty_body = ExprEmptyBlock |> loc_annot $symbolstartpos $endpos in
     let class_body = ExprClassBody(empty_body) |> loc_annot $symbolstartpos $endpos in
-    ExprConstAssign(c, class_body) |> loc_annot $symbolstartpos $endpos
+    ExprConstAssign(c, nesting_t, class_body) |> loc_annot $symbolstartpos $endpos
   }
-  | CLASSDEF c = CONST EOS? body = statement statement_end? END {
+  | CLASSDEF cls = const EOS? body = statement statement_end? END {
+    let (c, nesting) = cls in
+    let nesting_t = List.map (fun x -> (x, Any)) nesting in
     let empty_body = ExprEmptyBlock |> loc_annot $symbolstartpos $endpos in
     let body = ExprBlock(body, empty_body) |> loc_annot $symbolstartpos $endpos in
     let class_body = ExprClassBody(body) |> loc_annot $symbolstartpos $endpos in
-    ExprConstAssign(c, class_body) |> loc_annot $symbolstartpos $endpos
+    ExprConstAssign(c, nesting_t, class_body) |> loc_annot $symbolstartpos $endpos
   }
 
 primitive:

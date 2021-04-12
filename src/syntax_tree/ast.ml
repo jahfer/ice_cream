@@ -23,7 +23,7 @@ and 'a expr =
   | ExprIVar of id
   | ExprAssign of string * 'a expression
   | ExprIVarAssign of string * 'a expression
-  | ExprConstAssign of string * 'a expression
+  | ExprConstAssign of string * nesting * 'a expression
   | ExprBlock of 'a expression * 'a expression
   | ExprClassBody of 'a expression
   | ExprEmptyBlock
@@ -43,8 +43,8 @@ let rec replace_metadata fn expr meta =
       ExprAssign (name, swap_meta a_expr a_meta)
     | ExprIVarAssign (name, (a_expr, a_meta)) ->
       ExprIVarAssign (name, swap_meta a_expr a_meta)
-    | ExprConstAssign (name, (a_expr, a_meta)) ->
-      ExprConstAssign (name, swap_meta a_expr a_meta)
+    | ExprConstAssign (name, nesting, (a_expr, a_meta)) ->
+      ExprConstAssign (name, nesting, swap_meta a_expr a_meta)
     | ExprIVar name -> ExprIVar name
     | ExprVar name -> ExprVar name
     | ExprValue v -> ExprValue v
@@ -85,8 +85,8 @@ module AstPrinter = struct
       printf "(lvasgn `%s %a)" name print_cexpr expr
     | ExprIVarAssign (name, expr) ->
       printf "(ivasgn %s %a)" name print_cexpr expr
-    | ExprConstAssign (name, expr) ->
-      printf "(casgn %s %a)" name print_cexpr expr
+    | ExprConstAssign (name, nesting, expr) ->
+      printf "(casgn (nesting [%a]) %s %a)" print_nesting nesting name print_cexpr expr
     | ExprValue (value) ->
       printf "%a" print_value value
     | ExprBlock (expr1, expr2) ->

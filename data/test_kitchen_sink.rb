@@ -53,7 +53,7 @@ maybe_sum(3, 5, false)
 
 class Foo; end
 
-class Bar
+class Foo::Bar
   def sum1(thing)
     45
   end
