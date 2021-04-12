@@ -52,3 +52,9 @@ maybe_sum(3, 5, false)
 }
 
 class Foo; end
+
+class Bar
+  def sum1(thing)
+    45
+  end
+end

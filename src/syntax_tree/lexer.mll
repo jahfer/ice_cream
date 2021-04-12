@@ -86,7 +86,7 @@ rule read state = parse
   | "true"   { ack_tok state; TRUE }
   | "false"  { ack_tok state; FALSE }
   | "nil"    { ack_tok state; NIL }
-  | "end"    { ack_tok state; END }
+  | "end"    { terminating_tok state; END }
   | const    { ack_tok state; CONST (Lexing.lexeme lexbuf) }
   | ivar     { terminating_tok state; IVAR (Lexing.lexeme lexbuf) }
   | id       {

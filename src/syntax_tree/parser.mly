@@ -59,6 +59,7 @@ statement:
   | p = primitive                {
     ExprValue(p) |> loc_annot $symbolstartpos $endpos
   }
+  | c = class_def                { c }
   | e = expr                     { e }
   ;
 
@@ -70,7 +71,6 @@ expr:
   | c = command_call  { c }
   | LAMBDA l = lambda { l }
   | f = func          { f }
-  | c = cls         { c }
   ;
 
 command_call:
@@ -121,15 +121,17 @@ func:
   }
   ;
 
-cls:
+class_def:
   | CLASSDEF c = CONST EOS? END {
     let empty_body = ExprEmptyBlock |> loc_annot $symbolstartpos $endpos in
-    ExprConstAssign(c, empty_body) |> loc_annot $symbolstartpos $endpos
+    let class_body = ExprClassBody(empty_body) |> loc_annot $symbolstartpos $endpos in
+    ExprConstAssign(c, class_body) |> loc_annot $symbolstartpos $endpos
   }
   | CLASSDEF c = CONST EOS? body = statement statement_end? END {
     let empty_body = ExprEmptyBlock |> loc_annot $symbolstartpos $endpos in
     let body = ExprBlock(body, empty_body) |> loc_annot $symbolstartpos $endpos in
-    ExprConstAssign(c, body) |> loc_annot $symbolstartpos $endpos
+    let class_body = ExprClassBody(body) |> loc_annot $symbolstartpos $endpos in
+    ExprConstAssign(c, class_body) |> loc_annot $symbolstartpos $endpos
   }
 
 primitive:

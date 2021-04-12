@@ -4,6 +4,7 @@
 
 (menhir
   (flags --explain)
+  ; (flags --explain --trace)
   (modules parser))
 
 (ocamllex lexer)
