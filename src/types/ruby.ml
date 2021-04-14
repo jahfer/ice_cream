@@ -20,8 +20,8 @@ type constraint_t =
 and c = constraint_t list
 
 (* partial type definition *)
-and upper_bound = c Constrained_type.upper_bound
-and lower_bound = c Constrained_type.lower_bound
+and upper_bound = c Polar_type.upper_bound
+and lower_bound = c Polar_type.lower_bound
 
 (* full type definition *)
-and t = c Constrained_type.t
+and t = c Polar_type.t

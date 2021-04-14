@@ -1,3 +1,3 @@
 module Ruby = Ruby
 
-include Constrained_type
+include Polar_type

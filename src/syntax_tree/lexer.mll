@@ -46,20 +46,20 @@ let const = ['A'-'Z'] ['a'-'z' 'A'-'Z' '_' '0'-'9']*
 rule read state = parse
   | white    { read state lexbuf }
   | newline  {
-      Lexing.new_line lexbuf;
-      if state.pending_termination || state.at_eos then
-        read state lexbuf
-      else begin
-        state.at_eos <- true; EOS
-      end
+    Lexing.new_line lexbuf;
+    if state.pending_termination || state.at_eos then
+      read state lexbuf
+    else begin
+      state.at_eos <- true; EOS
+    end
   }
   | "def"    { newline_agnostic_tok state; DEF }
-  | "class"  { newline_agnostic_tok state; CLASSDEF }
-  | "module" { newline_agnostic_tok state; MODDEF }
+  | "class"  { ack_tok state; CLASSDEF }
+  | "module" { ack_tok state; MODDEF }
   | "->"     {
-      ack_tok state;
-      state.lambda_stack <- (state.paren_level :: state.lambda_stack);
-      LAMBDA
+    ack_tok state;
+    state.lambda_stack <- (state.paren_level :: state.lambda_stack);
+    LAMBDA
   }
   | '.'      {
     state.fn_call <- true; ack_tok state; DOT

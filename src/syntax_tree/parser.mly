@@ -27,7 +27,15 @@ prog:
   ;
 
 top_statement:
-  s = statement top_statement_end { s } ;
+  | s = stmt top_statement_end { s }
+  %inline stmt:
+  | s = statement { s }
+  // this needs to be here so we don't swallow the EOS
+  | m = ID args = separated_nonempty_list(COMMA, statement) {
+    let sub_expr = ExprValue(Nil) |> loc_annot $symbolstartpos $endpos in
+    ExprCall(sub_expr, m, args)   |> loc_annot $symbolstartpos $endpos
+  }
+  ;
 
 statement_end:
   EOS { };
@@ -36,8 +44,8 @@ top_statement_end:
   statement_end | EOF { };
 
 statement:
-  | ref = identifier             {
-    ExprVar(ref) |> loc_annot $symbolstartpos $endpos
+  | ref = ID             {
+    ExprVar((ref, Any)) |> loc_annot $symbolstartpos $endpos
   }
   | ref = iv_identifier          {
     ExprIVar(ref) |> loc_annot $symbolstartpos $endpos
@@ -56,7 +64,8 @@ statement:
   | cls = const EQ v = rhs_assign  {
     let (c, nesting) = cls in
     let nesting_t = List.map (fun x -> (x, Any)) nesting in
-    ExprConstAssign(c, nesting_t, v) |> loc_annot $symbolstartpos $endpos
+    let const = ExprConst((c, Any), nesting_t) |> loc_annot $symbolstartpos $endpos in
+    ExprConstAssign(const, v) |> loc_annot $symbolstartpos $endpos
   }
   | p = primitive                {
     ExprValue(p) |> loc_annot $symbolstartpos $endpos
@@ -88,12 +97,12 @@ command:
     let sub_expr = ExprValue(Nil) |> loc_annot $symbolstartpos $endpos in
     ExprCall(sub_expr, m, args)   |> loc_annot $symbolstartpos $endpos
   }
-  | c1 = identifier call_op c2 = method_call {
-    let sub_expr = ExprVar(c1) |> loc_annot $symbolstartpos $endpos in
+  | c1 = ID call_op c2 = method_call {
+    let sub_expr = ExprVar((c1, Any)) |> loc_annot $symbolstartpos $endpos in
     ExprCall(sub_expr, c2, []) |> loc_annot $symbolstartpos $endpos
   }
-  | c1 = identifier call_op c2 = method_call args = command_args {
-    let sub_expr = ExprVar(c1)   |> loc_annot $symbolstartpos $endpos in
+  | c1 = ID call_op c2 = method_call args = command_args {
+    let sub_expr = ExprVar((c1, Any))   |> loc_annot $symbolstartpos $endpos in
     ExprCall(sub_expr, c2, args) |> loc_annot $symbolstartpos $endpos
   }
   ;
@@ -104,12 +113,7 @@ method_call:
   id = FID { id } ;
 
 command_args:
-  | node = command_call { [node] }
-  | args = call_args { args }
-  ;
-
-identifier:
-  id = ID { id, Any } ;
+  args = call_args { args } ;
 
 iv_identifier:
   iv = IVAR { iv, Any } ;
@@ -125,37 +129,41 @@ func:
   ;
 
 class_def:
-  | CLASSDEF cls = const EOS? END {
+  | CLASSDEF cls = const EOS END {
     let (c, nesting) = cls in
     let nesting_t = List.map (fun x -> (x, Any)) nesting in
+    let const = ExprConst((c, Any), nesting_t) |> loc_annot $symbolstartpos $endpos in
     let empty_body = ExprEmptyBlock |> loc_annot $symbolstartpos $endpos in
     let class_body = ExprClassBody(empty_body) |> loc_annot $symbolstartpos $endpos in
-    ExprConstAssign(c, nesting_t, class_body) |> loc_annot $symbolstartpos $endpos
+    ExprConstAssign(const, class_body) |> loc_annot $symbolstartpos $endpos
   }
-  | CLASSDEF cls = const EOS? body = statement statement_end? END {
+  | CLASSDEF cls = const EOS body = top_statement END {
     let (c, nesting) = cls in
     let nesting_t = List.map (fun x -> (x, Any)) nesting in
+    let const = ExprConst((c, Any), nesting_t) |> loc_annot $symbolstartpos $endpos in
     let empty_body = ExprEmptyBlock |> loc_annot $symbolstartpos $endpos in
     let body = ExprBlock(body, empty_body) |> loc_annot $symbolstartpos $endpos in
     let class_body = ExprClassBody(body) |> loc_annot $symbolstartpos $endpos in
-    ExprConstAssign(c, nesting_t, class_body) |> loc_annot $symbolstartpos $endpos
+    ExprConstAssign(const, class_body) |> loc_annot $symbolstartpos $endpos
   }
 
 mod_def:
-  | MODDEF cls = const EOS? END {
+  | MODDEF cls = const EOS END {
     let (c, nesting) = cls in
     let nesting_t = List.map (fun x -> (x, Any)) nesting in
+    let const = ExprConst((c, Any), nesting_t) |> loc_annot $symbolstartpos $endpos in
     let empty_body = ExprEmptyBlock |> loc_annot $symbolstartpos $endpos in
     let class_body = ExprModuleBody(empty_body) |> loc_annot $symbolstartpos $endpos in
-    ExprConstAssign(c, nesting_t, class_body) |> loc_annot $symbolstartpos $endpos
+    ExprConstAssign(const, class_body) |> loc_annot $symbolstartpos $endpos
   }
-  | MODDEF cls = const EOS? body = statement statement_end? END {
+  | MODDEF cls = const EOS body = top_statement END {
     let (c, nesting) = cls in
     let nesting_t = List.map (fun x -> (x, Any)) nesting in
+    let const = ExprConst((c, Any), nesting_t) |> loc_annot $symbolstartpos $endpos in
     let empty_body = ExprEmptyBlock |> loc_annot $symbolstartpos $endpos in
     let body = ExprBlock(body, empty_body) |> loc_annot $symbolstartpos $endpos in
     let class_body = ExprModuleBody(body) |> loc_annot $symbolstartpos $endpos in
-    ExprConstAssign(c, nesting_t, class_body) |> loc_annot $symbolstartpos $endpos
+    ExprConstAssign(const, class_body) |> loc_annot $symbolstartpos $endpos
   }
 
 primitive:
@@ -189,7 +197,9 @@ lambda_body:
   ;
 
 fn_args:
-  LPAREN p = separated_list(COMMA, identifier) RPAREN { p } ;
+  LPAREN p = separated_list(COMMA, ID) RPAREN {
+    List.map (fun x -> (x, Any)) p
+  } ;
 
 call_args:
   LPAREN p = separated_list(COMMA, statement) RPAREN { p } ;
@@ -204,15 +214,11 @@ list_fields:
   vl = separated_list(COMMA, primitive)     { vl } ;
 
 const:
-  | NAMESPACE clist = separated_nonempty_list(NAMESPACE, CONST) {
-    match clist with
-    | [] -> $syntaxerror
-    | c :: [] -> (c, [])
-    | c :: ns -> let nesting = List.fold_left (fun acc const ->
-      (String.concat "::" (const :: acc)) :: acc
-    ) [] ns in (c, nesting)
-  }
-  | clist = separated_nonempty_list(NAMESPACE, CONST) {
+  | root = NAMESPACE? clist = separated_nonempty_list(NAMESPACE, CONST) {
+    let clist = match root with
+    | Some(_) -> "~ROOT~" :: clist
+    | None -> clist 
+    in 
     match List.rev clist with
     | [] -> $syntaxerror
     | c :: [] -> (c, [])

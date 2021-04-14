@@ -3,8 +3,8 @@
   (libraries core))
 
 (menhir
-  (flags --explain)
-  ; (flags --explain --trace)
+  ; (flags --explain)
+  (flags --explain --trace)
   (modules parser))
 
 (ocamllex lexer)

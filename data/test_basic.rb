@@ -8,3 +8,6 @@ def bar(x)
   x.thing(x)
 end
 
+def baz(x)
+  { x: x+1, y: x }
+end

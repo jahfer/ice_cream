@@ -1,6 +1,8 @@
 foo
 45
 
+attr_reader :bar
+
 # comment
 
 params = {
@@ -12,8 +14,9 @@ params = {
 @x
 
 FooBar = 151.56
-FooBar
+::FooBar
 M1::M2::Baz
+::M1::M2
 
 stmt1 = 3; stmt2 = 1
 

@@ -23,7 +23,7 @@ and 'a expr =
   | ExprIVar of id
   | ExprAssign of string * 'a expression
   | ExprIVarAssign of string * 'a expression
-  | ExprConstAssign of string * nesting * 'a expression
+  | ExprConstAssign of 'a expression * 'a expression
   | ExprBlock of 'a expression * 'a expression
   | ExprClassBody of 'a expression
   | ExprModuleBody of 'a expression
@@ -44,8 +44,8 @@ let rec replace_metadata fn expr meta =
       ExprAssign (name, swap_meta a_expr a_meta)
     | ExprIVarAssign (name, (a_expr, a_meta)) ->
       ExprIVarAssign (name, swap_meta a_expr a_meta)
-    | ExprConstAssign (name, nesting, (a_expr, a_meta)) ->
-      ExprConstAssign (name, nesting, swap_meta a_expr a_meta)
+    | ExprConstAssign (cexpr, (a_expr, a_meta)) ->
+      ExprConstAssign (cexpr, swap_meta a_expr a_meta) (* todo: swap_meta cexpr? *)
     | ExprIVar name -> ExprIVar name
     | ExprVar name -> ExprVar name
     | ExprValue v -> ExprValue v
@@ -72,12 +72,12 @@ module AstPrinter = struct
     printf "%a" print_ast expr
 
   and print_ast _outc = function
-    | ExprCall (receiver, meth, _args) ->
-      printf "(send %a `%s)" print_cexpr receiver meth
-    | ExprFunc (name, args, body) ->
-      printf "(def `%s %a %a)" name print_args args print_cexpr body
-    | ExprLambda (args, body) ->
-      printf "(lambda %a %a)" print_args args print_cexpr body
+    | ExprCall (receiver, meth, args) ->
+      printf "(send %a `%s (args %a))" print_cexpr receiver meth print_cexpr_list args
+    | ExprFunc (name, params, body) ->
+      printf "(def `%s %a %a)" name print_params params print_cexpr body
+    | ExprLambda (params, body) ->
+      printf "(lambda %a %a)" print_params params print_cexpr body
     | ExprVar ((name, _value))  ->
       printf "(lvar `%s)" name
     | ExprConst ((name, _value), nesting) ->
@@ -88,8 +88,8 @@ module AstPrinter = struct
       printf "(lvasgn `%s %a)" name print_cexpr expr
     | ExprIVarAssign (name, expr) ->
       printf "(ivasgn %s %a)" name print_cexpr expr
-    | ExprConstAssign (name, nesting, expr) ->
-      printf "(casgn (nesting [%a]) %s %a)" print_nesting nesting name print_cexpr expr
+    | ExprConstAssign (cexpr, expr) ->
+      printf "(casgn %a %a)" print_cexpr cexpr print_cexpr expr
     | ExprValue (value) ->
       printf "%a" print_value value
     | ExprBlock (expr1, expr2) ->
@@ -113,12 +113,12 @@ module AstPrinter = struct
     | Nil          -> Out_channel.output_string outc "nil"
     | Any          -> printf "?"
 
-  and print_args outc arr =
+  and print_params outc arr =
     if List.length(arr) > 0 then begin
-      Out_channel.output_string outc "(args";
+      Out_channel.output_string outc "(params";
       List.iteri ~f:(fun _i (id, _value) ->
           Out_channel.output_string outc " ";
-          printf "(arg `%s)" id) arr;
+          printf "(param `%s)" id) arr;
       Out_channel.output_string outc ")"
     end else printf "()"
 
@@ -140,4 +140,10 @@ module AstPrinter = struct
         if i > 0 then
           Out_channel.output_string outc " ";
         printf "%s" name) lst
+
+  and print_cexpr_list outc lst =
+    List.iteri ~f:(fun i v ->
+        if i > 0 then
+          Out_channel.output_string outc " ";
+        print_cexpr outc v) lst
 end
