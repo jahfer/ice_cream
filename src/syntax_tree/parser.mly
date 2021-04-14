@@ -101,9 +101,21 @@ command:
     let sub_expr = ExprVar((c1, Any)) |> loc_annot $symbolstartpos $endpos in
     ExprCall(sub_expr, c2, []) |> loc_annot $symbolstartpos $endpos
   }
+  | cst = const call_op c2 = method_call {
+    let (c, nesting) = cst in
+    let nesting_t = List.map (fun x -> (x, Any)) nesting in
+    let const = ExprConst((c, Any), nesting_t) |> loc_annot $symbolstartpos $endpos in
+    ExprCall(const, c2, []) |> loc_annot $symbolstartpos $endpos
+  }
   | c1 = ID call_op c2 = method_call args = command_args {
     let sub_expr = ExprVar((c1, Any))   |> loc_annot $symbolstartpos $endpos in
     ExprCall(sub_expr, c2, args) |> loc_annot $symbolstartpos $endpos
+  }
+  | cst = const call_op c2 = method_call args = command_args {
+    let (c, nesting) = cst in
+    let nesting_t = List.map (fun x -> (x, Any)) nesting in
+    let const = ExprConst((c, Any), nesting_t) |> loc_annot $symbolstartpos $endpos in
+    ExprCall(const, c2, args) |> loc_annot $symbolstartpos $endpos
   }
   ;
 
@@ -119,12 +131,24 @@ iv_identifier:
   iv = IVAR { iv, Any } ;
 
 func:
-  | DEF fn = ID args = fn_args EOS? END {
+  | DEF fn = ID args = fn_args? EOS? END {
+    let args = match args with
+    | Some(list) -> list
+    | None -> []
+    in
     let body = ExprValue(Nil) |> loc_annot $symbolstartpos $endpos in
     ExprFunc(fn, args, body) |> loc_annot $symbolstartpos $endpos
   }
-  | DEF fn = ID args = fn_args EOS? s = statement statement_end? END {
-    ExprFunc(fn, args, s) |> loc_annot $symbolstartpos $endpos
+  | DEF fn = ID args = fn_args? EOS? body = nonempty_list(top_statement) END {
+    let args = match args with
+    | Some(list) -> list
+    | None -> []
+    in
+    let empty_body = ExprEmptyBlock |> loc_annot $symbolstartpos $endpos in
+    let body_expr = List.fold_left (fun acc expr ->
+      ExprBlock(expr, acc) |> loc_annot $symbolstartpos $endpos
+    ) empty_body @@ List.rev body in
+    ExprFunc(fn, args, body_expr) |> loc_annot $symbolstartpos $endpos
   }
   ;
 
@@ -137,13 +161,15 @@ class_def:
     let class_body = ExprClassBody(empty_body) |> loc_annot $symbolstartpos $endpos in
     ExprConstAssign(const, class_body) |> loc_annot $symbolstartpos $endpos
   }
-  | CLASSDEF cls = const EOS body = top_statement END {
+  | CLASSDEF cls = const EOS body = nonempty_list(top_statement) END {
     let (c, nesting) = cls in
     let nesting_t = List.map (fun x -> (x, Any)) nesting in
     let const = ExprConst((c, Any), nesting_t) |> loc_annot $symbolstartpos $endpos in
     let empty_body = ExprEmptyBlock |> loc_annot $symbolstartpos $endpos in
-    let body = ExprBlock(body, empty_body) |> loc_annot $symbolstartpos $endpos in
-    let class_body = ExprClassBody(body) |> loc_annot $symbolstartpos $endpos in
+    let body_expr = List.fold_left (fun acc expr ->
+      ExprBlock(expr, acc) |> loc_annot $symbolstartpos $endpos
+    ) empty_body @@ List.rev body in
+    let class_body = ExprClassBody(body_expr) |> loc_annot $symbolstartpos $endpos in
     ExprConstAssign(const, class_body) |> loc_annot $symbolstartpos $endpos
   }
 
@@ -156,13 +182,15 @@ mod_def:
     let class_body = ExprModuleBody(empty_body) |> loc_annot $symbolstartpos $endpos in
     ExprConstAssign(const, class_body) |> loc_annot $symbolstartpos $endpos
   }
-  | MODDEF cls = const EOS body = top_statement END {
+  | MODDEF cls = const EOS body = nonempty_list(top_statement) END {
     let (c, nesting) = cls in
     let nesting_t = List.map (fun x -> (x, Any)) nesting in
     let const = ExprConst((c, Any), nesting_t) |> loc_annot $symbolstartpos $endpos in
     let empty_body = ExprEmptyBlock |> loc_annot $symbolstartpos $endpos in
-    let body = ExprBlock(body, empty_body) |> loc_annot $symbolstartpos $endpos in
-    let class_body = ExprModuleBody(body) |> loc_annot $symbolstartpos $endpos in
+    let body_expr = List.fold_left (fun acc expr ->
+      ExprBlock(expr, acc) |> loc_annot $symbolstartpos $endpos
+    ) empty_body @@ List.rev body in
+    let class_body = ExprModuleBody(body_expr) |> loc_annot $symbolstartpos $endpos in
     ExprConstAssign(const, class_body) |> loc_annot $symbolstartpos $endpos
   }
 
