@@ -20,7 +20,7 @@
  let free_type = { input_constraints = Top; output_constraints = Bottom }
  
  (* Appends a constraint to a specific polarity of the provided type *)
- (* (+x, -x) -> +c -> t where -x <= s *)
+ (* (+x, -x) -> +c -> t where -x <: s *)
  let input_constraint
    (c : 'a)
    (x : 'a list t) =

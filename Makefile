@@ -1,4 +1,3 @@
-
 FORMAT ?= exe
 FILE ?= data/test_kitchen_sink.rb
 
@@ -14,4 +13,4 @@ test:
 clean:
 	dune clean
 
-.PHONY: build clean run test docs
+.PHONY: build clean run test

@@ -1,19 +1,20 @@
 open OUnit2
 open Ice_cream
+open Polar_type
 
 let test_input_constraint _ =
-  let c = Types.Ruby.(Literal TInt) in
-  let used_as_integer = Types.free_type |> Types.input_constraint c in
-  let expected_constraint : Types.Ruby.upper_bound = Constrained([c]) in
+  let c = Ruby.(Literal TInt) in
+  let used_as_integer = free_type |> input_constraint c in
+  let expected_constraint : Ruby.upper_bound = Constrained([c]) in
   assert_equal expected_constraint used_as_integer.input_constraints;
-  assert_equal Types.Bottom used_as_integer.output_constraints
+  assert_equal Bottom used_as_integer.output_constraints
 
 let test_output_constraint _ =
-  let c = Types.Ruby.(Literal TInt) in
-  let set_as_integer = Types.free_type |> Types.output_constraint c in
-  let expected_constraint : Types.Ruby.lower_bound = Constrained([c]) in
+  let c = Ruby.(Literal TInt) in
+  let set_as_integer = free_type |> output_constraint c in
+  let expected_constraint : Ruby.lower_bound = Constrained([c]) in
   assert_equal expected_constraint set_as_integer.output_constraints;
-  assert_equal Types.Top set_as_integer.input_constraints
+  assert_equal Top set_as_integer.input_constraints
 
 (*
   def foo(z)

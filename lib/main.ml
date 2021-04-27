@@ -1,5 +1,5 @@
 open Lexing
-open Syntax_tree.Lexer
+open Lexer
 
 let init_state () : lex_state = {
   pending_termination = false;
@@ -17,11 +17,11 @@ let print_position outx lexbuf =
     pos.pos_lnum (pos.pos_cnum - pos.pos_bol + 1)
 
 let parse_with_error lexbuf =
-  try Syntax_tree.Parser.prog (Syntax_tree.Lexer.read state) lexbuf with
-  | Syntax_tree.Lexer.SyntaxError msg ->
+  try Parser.prog (Lexer.read state) lexbuf with
+  | Lexer.SyntaxError msg ->
     Format.fprintf Format.std_formatter "%a: %s\n" print_position lexbuf msg;
     None
-  | Syntax_tree.Parser.Error ->
+  | Parser.Error ->
     let tok = Lexing.lexeme lexbuf in
     Format.fprintf Format.std_formatter "%a: syntax error ('%s')\n" print_position lexbuf tok;
     exit (-1)
@@ -35,14 +35,22 @@ let parse_buf_to_ast lexbuf =
     | None -> acc
   in
 
-  let untyped_ast : 'a Syntax_tree.Ast.expression list = build_untyped_ast lexbuf [] in
+  let untyped_ast : 'a Ast.expression list = build_untyped_ast lexbuf [] in
   untyped_ast
-  |> List.rev
-  |> List.iter (fun ast -> Printf.printf "%a\n" Syntax_tree.Ast.AstPrinter.print_cexpr ast)
+
+let string_from_ast untyped_ast = untyped_ast
+|> List.rev
+|> List.map (fun ast -> Printf.sprintf "%s\n" (Ast.AstPrinter.print_cexpr ast))
+|> String.concat ""
 
 let parse_from_filename filename =
-  let inx = Core.In_channel.create filename in
+  let inx = open_in filename in
   let lexbuf = Lexing.from_channel inx in
   lexbuf.lex_curr_p <- { lexbuf.lex_curr_p with pos_fname = filename };
-  parse_buf_to_ast lexbuf;
-  Core.In_channel.close inx;
+  parse_buf_to_ast lexbuf |> string_from_ast |> output_string stdout;
+  close_in inx
+
+let parse_from_string ?filename:(filename : string = "?") str =
+  let lexbuf = Lexing.from_string str in
+  lexbuf.lex_curr_p <- { lexbuf.lex_curr_p with pos_fname = filename };
+  parse_buf_to_ast lexbuf

@@ -1,4 +1,0 @@
-(library
-  (name ice_cream)
-  (flags :standard -warn-error A)
-  (libraries syntax_tree types))

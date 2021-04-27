@@ -1,7 +1,3 @@
-(library
-  (name syntax_tree)
-  (libraries core))
-
 (menhir
   (flags --explain)
   ; (flags --explain --trace)
