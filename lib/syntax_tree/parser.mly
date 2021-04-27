@@ -139,6 +139,7 @@ func:
     let body = ExprValue(Nil) |> loc_annot $symbolstartpos $endpos in
     ExprFunc(fn, args, body) |> loc_annot $symbolstartpos $endpos
   }
+  // Multi-line function
   | DEF fn = ID args = fn_args? EOS? body = nonempty_list(top_statement) END {
     let args = match args with
     | Some(list) -> list
@@ -148,6 +149,16 @@ func:
     let body_expr = List.fold_left (fun acc expr ->
       ExprBlock(expr, acc) |> loc_annot $symbolstartpos $endpos
     ) empty_body @@ List.rev body in
+    ExprFunc(fn, args, body_expr) |> loc_annot $symbolstartpos $endpos
+  }
+  // Single line function
+  | DEF fn = ID args = fn_args? EOS? body = statement END {
+    let args = match args with
+    | Some(list) -> list
+    | None -> []
+    in
+    let empty_body = ExprEmptyBlock |> loc_annot $symbolstartpos $endpos in
+    let body_expr = ExprBlock(body, empty_body) |> loc_annot $symbolstartpos $endpos in
     ExprFunc(fn, args, body_expr) |> loc_annot $symbolstartpos $endpos
   }
   ;

@@ -20,13 +20,15 @@ M1::M2::Baz
 
 stmt1 = 3; stmt2 = 1
 
-def sum0(); false end
+def sum0; false end
 
-def sum1(thing)
+def sum1(); true end
+
+def sum2(thing)
   45
 end
 
-def sum2(thing1, thing2) end
+def sum3(thing1, thing2) end
 
 def maybe_sum(a, b, should_do_thing) end
 

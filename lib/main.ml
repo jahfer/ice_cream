@@ -23,7 +23,7 @@ let parse_with_error lexbuf =
     None
   | Parser.Error ->
     let tok = Lexing.lexeme lexbuf in
-    Format.fprintf Format.std_formatter "%a: syntax error ('%s')\n" print_position lexbuf tok;
+    Format.fprintf Format.std_formatter "%a: Syntax error ('%s')\n" print_position lexbuf tok;
     exit (-1)
 
 let parse_buf_to_ast lexbuf =
