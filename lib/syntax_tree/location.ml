@@ -1,9 +1,12 @@
 open Lexing
 
 type t = {
+  id: int;
   start_pos : position;
   end_pos : position;
 }
+
+let gen_id () = Oo.id (object end)
 
 let pos_column pos = pos.pos_cnum - pos.pos_bol + 1
 

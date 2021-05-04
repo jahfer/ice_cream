@@ -156,3 +156,143 @@ module AstPrinter = struct
         Buffer.add_string buf (print_cexpr v)) lst;
     Buffer.contents buf
 end
+
+module Index : sig
+  type type_key =
+  | KExprAssign
+  | KExprIVarAssign
+  | KExprConstAssign
+  | KExprFunc
+
+  type node_list_t = (type_key * Location.t expression list) list
+  type range = { pos_beg: int; pos_end: int }
+  type index_map_t = (type_key * ((type_key * range) list)) list
+  type const = Root | Const of string
+  type context = {
+    nesting : const list;
+    node_list : node_list_t;
+    index: index_map_t;
+  }
+
+  val create : (Location.t expression list) -> context
+
+end = struct
+  type type_key =
+  | KExprAssign
+  | KExprIVarAssign
+  | KExprConstAssign
+  | KExprFunc
+
+  type node_list_t = (type_key * Location.t expression list) list
+  type range = { pos_beg: int; pos_end: int }
+  type index_map_t = (type_key * ((type_key * range) list)) list
+  type const = Root | Const of string
+  type context = {
+    nesting : const list;
+    node_list : node_list_t;
+    index: index_map_t;
+  }
+
+  let node_list_default () : node_list_t = [
+    (KExprAssign, []);
+    (KExprIVarAssign, []);
+    (KExprConstAssign, []);
+    (KExprFunc, []);
+  ]
+
+  let index_default () : index_map_t = [
+    (KExprAssign, []);
+    (KExprIVarAssign, []);
+    (KExprConstAssign, []);
+    (KExprFunc, []);
+  ]
+
+  let context_default () : context = {
+    nesting = [Root];
+    node_list = node_list_default ();
+    index = index_default ();
+  }
+
+  let print_context ({ nesting; _ } : context) =
+    nesting
+    |> List.rev_map (fun x -> match x with Root -> "" | Const x -> x)
+    |> String.concat "::"
+    |> print_endline
+
+  let create (ast) = 
+    (* todo this needs to take the accumulator as well *)
+    let rec traverse
+      (context : context)
+      (expression : Location.t expression) =
+
+      print_context context;
+
+      let (expr, _loc) = expression in
+      match expr with
+      | ExprConstAssign ((ExprConst ((name, _t), _nesting), _loc), e) -> (
+        let c = {
+          context with nesting = (Const name) :: context.nesting
+        } in
+        let c' = traverse c e in
+        { c' with nesting = (List.tl c'.nesting) }
+      )
+      | ExprBlock (e1, e2) ->
+        let c' = traverse context e1 in
+        traverse c' e2
+      | ExprClassBody e 
+      | ExprModuleBody e -> traverse context e
+      | ExprIVarAssign _
+      | ExprAssign _
+      | ExprFunc _
+      (* others *)
+      | ExprCall _
+      | ExprLambda _
+      | ExprValue _
+      | ExprVar _
+      | ExprConst _
+      | ExprIVar _
+      | ExprConstAssign _
+      | ExprEmptyBlock -> context
+      in List.fold_left traverse (context_default ()) ast
+
+    (* 
+    - Const assignment
+    - Var assignment
+    - Instance var assignment
+    - Function definition
+
+    - Object interfaces (public methods)
+
+    - Function calls
+    - Const reference
+     *)
+
+ (*   
+  | ExprCall of 'a expression * string * 'a expression list (* receiver, method, args *)
+  | ExprFunc of string * id list * 'a expression (* name, args, body *)
+  | ExprLambda of id list * 'a expression (* args, body *)
+  | ExprValue of value
+  | ExprVar of id
+  | ExprConst of id * nesting
+  | ExprIVar of id
+  | ExprAssign of string * 'a expression
+  | ExprIVarAssign of string * 'a expression
+  | ExprConstAssign of 'a expression * 'a expression
+  | ExprBlock of 'a expression * 'a expression
+  | ExprClassBody of 'a expression
+  | ExprModuleBody of 'a expression
+  | ExprEmptyBlock
+  *)
+
+end
+
+(* let nodes = [
+  (ExprTypeA, [ExprA 0; ExprA 3]);
+  (ExprTypeB, [ExprB 1]);
+  (ExprTypeC, [ExprC 2; ExprC 4]);
+  (ExprTypeD, [ExprD 3])
+]
+
+let index = [ 
+  (ExprTypeA, [(ExprTypeB, { start: 0, end: 1 })])
+] *)

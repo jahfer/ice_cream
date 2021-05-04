@@ -14,7 +14,11 @@
   open Ast
   open Location
 
-  let loc_annot start_pos end_pos expr = (expr, { start_pos; end_pos; })
+  let loc_annot
+    (start_pos : Lexing.position)
+    (end_pos : Lexing.position)
+    (expr : Location.t Ast.expr) =
+      (expr, { id = Location.gen_id (); start_pos; end_pos; })
 %}
 
 %start <Location.t Ast.expression option> prog

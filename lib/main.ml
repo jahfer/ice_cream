@@ -32,9 +32,7 @@ let parse_buf_to_ast lexbuf =
     match parse_with_error lexbuf with
     | Some (expr) ->
       build_untyped_ast lexbuf (expr :: acc)
-    | None -> acc
-  in
-
+    | None -> acc in
   let untyped_ast : 'a Ast.expression list = build_untyped_ast lexbuf [] in
   untyped_ast
 
@@ -47,7 +45,10 @@ let parse_from_filename filename =
   let inx = open_in filename in
   let lexbuf = Lexing.from_channel inx in
   lexbuf.lex_curr_p <- { lexbuf.lex_curr_p with pos_fname = filename };
-  parse_buf_to_ast lexbuf |> string_from_ast |> output_string stdout;
+  let ast = parse_buf_to_ast lexbuf in
+  let str = string_from_ast ast in
+  output_string stdout str;
+  let _index = Ast.Index.create ast in
   close_in inx
 
 let parse_from_string ?filename:(filename : string = "?") str =
