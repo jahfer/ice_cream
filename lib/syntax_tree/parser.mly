@@ -152,7 +152,7 @@ func:
     let body_expr = List.fold_left (fun acc expr ->
       ExprBlock(expr, acc) |> loc_annot $sloc
     ) empty_body @@ List.rev body in
-    ExprFunc(fn, args, body_expr) |> loc_annot $sloc
+    ExprFunc(fn, args, body_expr) |> loc_annot ($symbolstartpos, $endpos(args))
   }
   // Single line function
   | DEF fn = ID args = fn_args? EOS? body = statement END {

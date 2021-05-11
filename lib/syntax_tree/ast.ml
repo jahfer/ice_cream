@@ -253,14 +253,24 @@ end = struct
         let c' = traverse c e in
         { c' with nesting = (List.tl c'.nesting) }
       )
+
       | ExprBlock (e1, e2) ->
         let c' = traverse context e1 in
         traverse c' e2
-      | ExprClassBody e 
-      | ExprModuleBody e -> traverse context e
+
+      | ExprClassBody e | ExprModuleBody e -> traverse context e
+
+      | ExprAssign (_, e) ->
+        let list = List.assoc KAssign context.node_list in
+        list := NodeSet.add expression !list;
+        traverse context e
+
+      | ExprFunc (_, _, e) ->
+        let list = List.assoc KFunc context.node_list in
+        list := NodeSet.add expression !list;
+        traverse context e
+
       | ExprIVarAssign _
-      | ExprAssign _
-      | ExprFunc _
       (* others *)
       | ExprCall _
       | ExprLambda _
