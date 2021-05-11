@@ -45,4 +45,4 @@ let print_loc loc =
   printf "%6s|" " ";
   let offset = pos_column loc.start_pos in
   let width = (pos_column loc.end_pos - pos_column loc.start_pos) in
-  printf "%*s%s" offset " " (String.make width '^')
+  printf "%*s%s\n" offset " " (String.make width '^')

@@ -48,7 +48,13 @@ let parse_from_filename filename =
   let ast = parse_buf_to_ast lexbuf in
   let str = string_from_ast ast in
   output_string stdout str;
-  let _index = Ast.Index.create ast in
+  let index = Ast.Index.create ast in
+  index.node_list
+  |> List.assoc Ast.Index.KConstAssign
+  |> (fun x -> x.contents)
+  |> Ast.Index.NodeSet.iter (fun (_, loc) ->
+    Location.print_loc loc
+  );
   close_in inx
 
 let parse_from_string ?filename:(filename : string = "?") str =

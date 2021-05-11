@@ -159,12 +159,19 @@ end
 
 module Index : sig
   type type_key =
-  | KExprAssign
-  | KExprIVarAssign
-  | KExprConstAssign
-  | KExprFunc
+  | KAssign
+  | KIVarAssign
+  | KConstAssign
+  | KFunc
 
-  type node_list_t = (type_key * Location.t expression list) list
+  module Node : sig
+    type t = Location.t expression
+    val compare : t -> t -> int
+  end
+
+  module NodeSet : Set.S with type elt = Node.t
+
+  type node_list_t = (type_key * NodeSet.t ref) list
   type range = { pos_beg: int; pos_end: int }
   type index_map_t = (type_key * ((type_key * range) list)) list
   type const = Root | Const of string
@@ -178,12 +185,21 @@ module Index : sig
 
 end = struct
   type type_key =
-  | KExprAssign
-  | KExprIVarAssign
-  | KExprConstAssign
-  | KExprFunc
+  | KAssign
+  | KIVarAssign
+  | KConstAssign
+  | KFunc
 
-  type node_list_t = (type_key * Location.t expression list) list
+  module Node = struct
+    type t = Location.t expression
+    let compare (a : t) (b : t) = 
+      let (_, x), (_, y) = a, b in
+      Stdlib.compare x.id y.id
+  end
+
+  module NodeSet = Set.Make(Node)
+
+  type node_list_t = (type_key * NodeSet.t ref) list
   type range = { pos_beg: int; pos_end: int }
   type index_map_t = (type_key * ((type_key * range) list)) list
   type const = Root | Const of string
@@ -194,17 +210,17 @@ end = struct
   }
 
   let node_list_default () : node_list_t = [
-    (KExprAssign, []);
-    (KExprIVarAssign, []);
-    (KExprConstAssign, []);
-    (KExprFunc, []);
+    (KAssign, ref NodeSet.empty);
+    (KIVarAssign, ref NodeSet.empty);
+    (KConstAssign, ref NodeSet.empty);
+    (KFunc, ref NodeSet.empty);
   ]
 
   let index_default () : index_map_t = [
-    (KExprAssign, []);
-    (KExprIVarAssign, []);
-    (KExprConstAssign, []);
-    (KExprFunc, []);
+    (KAssign, []);
+    (KIVarAssign, []);
+    (KConstAssign, []);
+    (KFunc, []);
   ]
 
   let context_default () : context = {
@@ -213,11 +229,11 @@ end = struct
     index = index_default ();
   }
 
-  let print_context ({ nesting; _ } : context) =
+  (* let print_context ({ nesting; _ } : context) =
     nesting
     |> List.rev_map (fun x -> match x with Root -> "" | Const x -> x)
     |> String.concat "::"
-    |> print_endline
+    |> print_endline *)
 
   let create (ast) = 
     (* todo this needs to take the accumulator as well *)
@@ -225,14 +241,15 @@ end = struct
       (context : context)
       (expression : Location.t expression) =
 
-      print_context context;
+      (* print_context context; *)
 
       let (expr, _loc) = expression in
       match expr with
       | ExprConstAssign ((ExprConst ((name, _t), _nesting), _loc), e) -> (
-        let c = {
-          context with nesting = (Const name) :: context.nesting
-        } in
+        let list = List.assoc KConstAssign context.node_list in
+        list := NodeSet.add expression !list;
+
+        let c = { context with nesting = (Const name) :: context.nesting } in
         let c' = traverse c e in
         { c' with nesting = (List.tl c'.nesting) }
       )
@@ -266,24 +283,6 @@ end = struct
     - Function calls
     - Const reference
      *)
-
- (*   
-  | ExprCall of 'a expression * string * 'a expression list (* receiver, method, args *)
-  | ExprFunc of string * id list * 'a expression (* name, args, body *)
-  | ExprLambda of id list * 'a expression (* args, body *)
-  | ExprValue of value
-  | ExprVar of id
-  | ExprConst of id * nesting
-  | ExprIVar of id
-  | ExprAssign of string * 'a expression
-  | ExprIVarAssign of string * 'a expression
-  | ExprConstAssign of 'a expression * 'a expression
-  | ExprBlock of 'a expression * 'a expression
-  | ExprClassBody of 'a expression
-  | ExprModuleBody of 'a expression
-  | ExprEmptyBlock
-  *)
-
 end
 
 (* let nodes = [
