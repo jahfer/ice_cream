@@ -265,12 +265,15 @@ end = struct
         list := NodeSet.add expression !list;
         traverse context e
 
+      | ExprIVarAssign (_, e) ->
+        let list = List.assoc KIVarAssign context.node_list in
+        list := NodeSet.add expression !list;
+        traverse context e
+
       | ExprFunc (_, _, e) ->
         let list = List.assoc KFunc context.node_list in
         list := NodeSet.add expression !list;
         traverse context e
-
-      | ExprIVarAssign _
       (* others *)
       | ExprCall _
       | ExprLambda _

@@ -72,6 +72,15 @@ let parse_from_filename filename =
   );
   print_endline "";
 
+  print_endline "INSTANCE VARIABLE ASSIGNMENTS";
+  index.node_list
+  |> List.assoc Ast.Index.KIVarAssign
+  |> (fun x -> x.contents)
+  |> Ast.Index.NodeSet.iter (fun (_, loc) ->
+    Location.print_loc loc
+  );
+  print_endline "";
+
   print_endline "FUNCTION DEFINITIONS";
   index.node_list
   |> List.assoc Ast.Index.KFunc

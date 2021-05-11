@@ -143,3 +143,58 @@ end
                 ())) 
         ()))
 ```
+
+```
+CONST ASSIGNMENTS
+     ...
+     2|   VERSION = "1.0.0"
+      | ^^^^^^^^^^^^^^^^^^^
+     ...
+     4|   class User
+      |   ^^^^^^^^^^
+     ...
+    11|   class Bot
+      |   ^^^^^^^^^
+     ...
+    19|   class Message
+      |   ^^^^^^^^^^^^^
+     ...
+    36|   class Channel
+      |   ^^^^^^^^^^^^^
+     ...
+     1| module ChatApp
+      | ^^^^^^^^^^^^^^
+
+LOCAL VARIABLE ASSIGNMENTS
+     ...
+    31|       m = Message.new
+      |       ^^^^^^^^^^^^^^^
+
+INSTANCE VARIABLE ASSIGNMENTS
+     ...
+    26|       @from = from
+      |       ^^^^^^^^^^^^
+     ...
+    27|       @string = string
+      |       ^^^^^^^^^^^^^^^^
+
+FUNCTION DEFINITIONS
+     ...
+     8|     def initialize(login, email); end
+      |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     ...
+    16|     def initialize(name, owner); end
+      |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     ...
+    25|     def initialize(from, string)
+      |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     ...
+    30|     def reply(from, string)
+      |     ^^^^^^^^^^^^^^^^^^^^^^^
+     ...
+    42|     def initialize(name); end
+      |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+     ...
+    43|     def each_member; end
+      |     ^^^^^^^^^^^^^^^^^^^^
+```

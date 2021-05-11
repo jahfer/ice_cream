@@ -22,7 +22,10 @@ module ChatApp
     attr_reader :from
     attr_reader :reply_to
 
-    def initialize(from, string); end
+    def initialize(from, string)
+      @from = from
+      @string = string
+    end
 
     def reply(from, string)
       m = Message.new
