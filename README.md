@@ -147,54 +147,84 @@ end
 #### Indexed Data
 ```
 CONST ASSIGNMENTS
+
+=> ::ChatApp
      ...
      2|   VERSION = "1.0.0"
       | ^^^^^^^^^^^^^^^^^^^
+
+=> ::ChatApp
      ...
      4|   class User
       |   ^^^^^^^^^^
+
+=> ::ChatApp
      ...
     11|   class Bot
       |   ^^^^^^^^^
+
+=> ::ChatApp
      ...
     19|   class Message
       |   ^^^^^^^^^^^^^
+
+=> ::ChatApp
      ...
     36|   class Channel
       |   ^^^^^^^^^^^^^
+
+=> 
      ...
      1| module ChatApp
       | ^^^^^^^^^^^^^^
 
 LOCAL VARIABLE ASSIGNMENTS
+
+=> ::ChatApp::Message
      ...
     31|       m = Message.new
       |       ^^^^^^^^^^^^^^^
 
 INSTANCE VARIABLE ASSIGNMENTS
+
+=> ::ChatApp::Message
      ...
     26|       @from = from
       |       ^^^^^^^^^^^^
+
+=> ::ChatApp::Message
      ...
     27|       @string = string
       |       ^^^^^^^^^^^^^^^^
 
 FUNCTION DEFINITIONS
+
+=> ::ChatApp::User
      ...
      8|     def initialize(login, email); end
       |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+=> ::ChatApp::Bot
      ...
     16|     def initialize(name, owner); end
       |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+=> ::ChatApp::Message
      ...
     25|     def initialize(from, string)
       |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+=> ::ChatApp::Message
      ...
     30|     def reply(from, string)
       |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+=> ::ChatApp::Channel
      ...
     42|     def initialize(name); end
       |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+=> ::ChatApp::Channel
      ...
     43|     def each_member; end
       |     ^^^^^^^^^^^^^^^^^^^^
