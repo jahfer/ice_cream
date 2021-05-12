@@ -164,8 +164,11 @@ module Index : sig
   | KConstAssign
   | KFunc
 
+  type const = Root | Const of string
+  type scope = const list 
+
   module Node : sig
-    type t = Location.t expression
+    type t = Location.t expression * scope
     val compare : t -> t -> int
   end
 
@@ -174,7 +177,6 @@ module Index : sig
   type node_list_t = (type_key * NodeSet.t ref) list
   type range = { pos_beg: int; pos_end: int }
   type index_map_t = (type_key * ((type_key * range) list)) list
-  type const = Root | Const of string
   type context = {
     nesting : const list;
     node_list : node_list_t;
@@ -190,10 +192,16 @@ end = struct
   | KConstAssign
   | KFunc
 
+  type const = Root | Const of string
+  type scope = const list
+
   module Node = struct
-    type t = Location.t expression
+    type t = Location.t expression * scope
+
+    let get_location (x : t) = let ((_, loc), _) = x in loc
+
     let compare (a : t) (b : t) = 
-      let (_, x), (_, y) = a, b in
+      let x, y = get_location a, get_location b in
       Stdlib.compare x.id y.id
   end
 
@@ -202,9 +210,8 @@ end = struct
   type node_list_t = (type_key * NodeSet.t ref) list
   type range = { pos_beg: int; pos_end: int }
   type index_map_t = (type_key * ((type_key * range) list)) list
-  type const = Root | Const of string
   type context = {
-    nesting : const list;
+    nesting : scope;
     node_list : node_list_t;
     index: index_map_t;
   }
@@ -245,9 +252,10 @@ end = struct
 
       let (expr, _loc) = expression in
       match expr with
+
       | ExprConstAssign ((ExprConst ((name, _t), _nesting), _loc), e) -> (
         let list = List.assoc KConstAssign context.node_list in
-        list := NodeSet.add expression !list;
+        list := NodeSet.add (expression, context.nesting) !list;
 
         let c = { context with nesting = (Const name) :: context.nesting } in
         let c' = traverse c e in
@@ -262,18 +270,19 @@ end = struct
 
       | ExprAssign (_, e) ->
         let list = List.assoc KAssign context.node_list in
-        list := NodeSet.add expression !list;
+        list := NodeSet.add (expression, context.nesting) !list;
         traverse context e
 
       | ExprIVarAssign (_, e) ->
         let list = List.assoc KIVarAssign context.node_list in
-        list := NodeSet.add expression !list;
+        list := NodeSet.add (expression, context.nesting) !list;
         traverse context e
 
       | ExprFunc (_, _, e) ->
         let list = List.assoc KFunc context.node_list in
-        list := NodeSet.add expression !list;
+        list := NodeSet.add (expression, context.nesting) !list;
         traverse context e
+        
       (* others *)
       | ExprCall _
       | ExprLambda _

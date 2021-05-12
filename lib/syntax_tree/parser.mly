@@ -68,7 +68,7 @@ statement:
     let (c, nesting) = cls in
     let nesting_t = List.map (fun x -> (x, Any)) nesting in
     let const = ExprConst((c, Any), nesting_t) |> loc_annot $loc(cls) in
-    ExprConstAssign(const, v) |> loc_annot ($startpos(cls), $endpos)
+    ExprConstAssign(const, v) |> loc_annot ($symbolstartpos, $endpos)
   }
   | p = primitive                {
     ExprValue(p) |> loc_annot $sloc
@@ -222,7 +222,7 @@ primitive:
 
 lambda:
   | body = lambda_body {
-    ExprLambda ([], body)   |> loc_annot $sloc
+    ExprLambda ([], body) |> loc_annot $sloc
   }
   | args = fn_args body = lambda_body {
     ExprLambda (args, body) |> loc_annot $sloc

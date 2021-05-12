@@ -48,6 +48,13 @@ let parse_from_filename filename =
   let ast = parse_buf_to_ast lexbuf in
   let str = string_from_ast ast in
   output_string stdout str;
+  
+  let print_scope (scope) = 
+    print_string "\n=> ";
+    scope
+    |> List.rev_map (fun x -> match x with Ast.Index.Root -> "" | Ast.Index.Const x -> x)
+    |> String.concat "::"
+    |> print_endline in
 
   (* print index data *)
   let index = Ast.Index.create ast in
@@ -58,7 +65,8 @@ let parse_from_filename filename =
   index.node_list
   |> List.assoc Ast.Index.KConstAssign
   |> (fun x -> x.contents)
-  |> Ast.Index.NodeSet.iter (fun (_, loc) ->
+  |> Ast.Index.NodeSet.iter (fun ((_, loc), scope) ->
+    print_scope scope;
     Location.print_loc loc
   );
   print_endline "";
@@ -67,7 +75,8 @@ let parse_from_filename filename =
   index.node_list
   |> List.assoc Ast.Index.KAssign
   |> (fun x -> x.contents)
-  |> Ast.Index.NodeSet.iter (fun (_, loc) ->
+  |> Ast.Index.NodeSet.iter (fun ((_, loc), scope) ->
+    print_scope scope;
     Location.print_loc loc
   );
   print_endline "";
@@ -76,7 +85,8 @@ let parse_from_filename filename =
   index.node_list
   |> List.assoc Ast.Index.KIVarAssign
   |> (fun x -> x.contents)
-  |> Ast.Index.NodeSet.iter (fun (_, loc) ->
+  |> Ast.Index.NodeSet.iter (fun ((_, loc), scope) ->
+    print_scope scope;
     Location.print_loc loc
   );
   print_endline "";
@@ -85,7 +95,8 @@ let parse_from_filename filename =
   index.node_list
   |> List.assoc Ast.Index.KFunc
   |> (fun x -> x.contents)
-  |> Ast.Index.NodeSet.iter (fun (_, loc) ->
+  |> Ast.Index.NodeSet.iter (fun ((_, loc), scope) ->
+    print_scope scope;
     Location.print_loc loc
   );
 
