@@ -49,12 +49,10 @@ let parse_from_filename filename =
   let str = string_from_ast ast in
   output_string stdout str;
   
-  let print_scope (scope) = 
-    print_string "\n=> ";
+  let scope_as_string (scope) = 
     scope
     |> List.rev_map (fun x -> match x with Ast.Index.Root -> "" | Ast.Index.Const x -> x)
-    |> String.concat "::"
-    |> print_endline in
+    |> String.concat "::" in
 
   (* print index data *)
   let index = Ast.Index.create ast in
@@ -65,8 +63,15 @@ let parse_from_filename filename =
   index.node_list
   |> List.assoc Ast.Index.KConstAssign
   |> (fun x -> x.contents)
-  |> Ast.Index.NodeSet.iter (fun ((_, loc), scope) ->
-    print_scope scope;
+  |> Ast.Index.NodeSet.iter (fun ((expr, loc), scope) ->
+    let scope_str = scope_as_string scope in
+    begin
+      match expr with
+      | ExprConstAssign ((ExprConst ((name, _), _), _), _) -> begin
+        Printf.printf "\nDefinition of %s::%s\n" scope_str name
+      end
+      | _ -> failwith "Oops."
+    end;
     Location.print_loc loc
   );
   print_endline "";
@@ -76,7 +81,8 @@ let parse_from_filename filename =
   |> List.assoc Ast.Index.KAssign
   |> (fun x -> x.contents)
   |> Ast.Index.NodeSet.iter (fun ((_, loc), scope) ->
-    print_scope scope;
+    print_string "\nScope: ";
+    print_endline @@ scope_as_string scope;
     Location.print_loc loc
   );
   print_endline "";
@@ -86,7 +92,8 @@ let parse_from_filename filename =
   |> List.assoc Ast.Index.KIVarAssign
   |> (fun x -> x.contents)
   |> Ast.Index.NodeSet.iter (fun ((_, loc), scope) ->
-    print_scope scope;
+    print_string "\nScope: ";
+    print_endline @@ scope_as_string scope;
     Location.print_loc loc
   );
   print_endline "";
@@ -96,8 +103,9 @@ let parse_from_filename filename =
   |> List.assoc Ast.Index.KFunc
   |> (fun x -> x.contents)
   |> Ast.Index.NodeSet.iter (fun ((_, loc), scope) ->
-    print_scope scope;
-    Location.print_loc loc
+    print_string "\nScope: ";
+    print_endline @@ scope_as_string scope;
+    Location.print_loc loc;
   );
 
   close_in inx

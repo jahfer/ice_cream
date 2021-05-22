@@ -57,12 +57,7 @@ maybe_sum(3, 5, false)
 }
 
 class Foo; end
-
-class Foo::Bar
-  def sum1(thing)
-    45
-  end
-end
+class Bar < Foo; end
 
 module Foo::Bar::Baz; end
 
@@ -71,5 +66,15 @@ module M1
     def sum1(thing)
       45
     end
+  end
+end
+
+class Foo::Bar
+  def sum1(thing)
+    45
+  end
+
+  class << self
+    def thing; end
   end
 end

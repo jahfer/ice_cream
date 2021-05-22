@@ -69,6 +69,9 @@ rule read state = parse
   | ';'      { ack_tok state; EOS }
   | ','      { ack_tok state; COMMA }
   | '='      { ack_tok state; EQ }
+  | "<<"     { ack_tok state; LSHIFT }
+  | '<'      { ack_tok state; LESS }
+  (* | '>'      { ack_tok state; GREATER } *)
   | '{'      { newline_agnostic_tok state;
     match state.lambda_stack with
     | el :: tl when el = state.paren_level ->
@@ -87,7 +90,8 @@ rule read state = parse
   | "false"  { ack_tok state; FALSE }
   | "nil"    { ack_tok state; NIL }
   | "end"    { terminating_tok state; END }
-  | const    { ack_tok state; CONST (Lexing.lexeme lexbuf) }
+  | "self"   { ack_tok state; SELF }
+  | const    { terminating_tok state; CONST (Lexing.lexeme lexbuf) }
   | ivar     { terminating_tok state; IVAR (Lexing.lexeme lexbuf) }
   | id       {
     terminating_tok state;

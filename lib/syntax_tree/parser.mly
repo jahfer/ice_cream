@@ -6,6 +6,8 @@
 %token LBRACE RBRACE LBRACK RBRACK LPAREN RPAREN LAMBEG
 %token COLON COMMA
 %token EOS EOF
+%token SELF
+%token LESS LSHIFT
 %token <string> ID FID IVAR
 %token <string> CONST
 %token EQ DEF END LAMBDA DOT CLASSDEF MODDEF
@@ -53,22 +55,15 @@ statement:
   | ref = iv_identifier          {
     ExprIVar(ref) |> loc_annot $sloc
   }
-  | c = const                    {
-    let (const, nesting) = c in
-    let nesting_t = List.map (fun x -> (x, Any)) nesting in
-    ExprConst((const, Any), nesting_t) |> loc_annot $sloc
-  }
   | id = ID EQ v = rhs_assign    {
-    ExprAssign(id, v) |> loc_annot $sloc
+    ExprAssign(id, v) |> loc_annot $loc(id)
   }
   | id = IVAR EQ v = rhs_assign  {
-    ExprIVarAssign(id, v) |> loc_annot $sloc
+    ExprIVarAssign(id, v) |> loc_annot $loc(id)
   }
   | cls = const EQ v = rhs_assign  {
-    let (c, nesting) = cls in
-    let nesting_t = List.map (fun x -> (x, Any)) nesting in
-    let const = ExprConst((c, Any), nesting_t) |> loc_annot $loc(cls) in
-    ExprConstAssign(const, v) |> loc_annot ($symbolstartpos, $endpos)
+    let (_, loc) = cls in
+    ExprConstAssign(cls, v) |> loc_annot (loc.start_pos, loc.end_pos)
   }
   | p = primitive                {
     ExprValue(p) |> loc_annot $sloc
@@ -76,6 +71,7 @@ statement:
   | c = class_def                { c }
   | m = mod_def                  { m }
   | e = expr                     { e }
+  | c = const                   { c }
   ;
 
 rhs_assign:
@@ -105,20 +101,14 @@ command:
     ExprCall(sub_expr, c2, []) |> loc_annot $sloc
   }
   | cst = const call_op c2 = method_call {
-    let (c, nesting) = cst in
-    let nesting_t = List.map (fun x -> (x, Any)) nesting in
-    let const = ExprConst((c, Any), nesting_t) |> loc_annot $loc(cst) in
-    ExprCall(const, c2, []) |> loc_annot $sloc
+    ExprCall(cst, c2, []) |> loc_annot $sloc
   }
   | c1 = ID call_op c2 = method_call args = command_args {
     let sub_expr = ExprVar((c1, Any))   |> loc_annot $loc(c1) in
     ExprCall(sub_expr, c2, args) |> loc_annot $sloc
   }
   | cst = const call_op c2 = method_call args = command_args {
-    let (c, nesting) = cst in
-    let nesting_t = List.map (fun x -> (x, Any)) nesting in
-    let const = ExprConst((c, Any), nesting_t) |> loc_annot $loc(cst) in
-    ExprCall(const, c2, args) |> loc_annot $sloc
+    ExprCall(cst, c2, args) |> loc_annot $sloc
   }
   ;
 
@@ -140,7 +130,7 @@ func:
     | None -> []
     in
     let body = ExprValue(Nil) |> loc_annot $sloc in
-    ExprFunc(fn, args, body) |> loc_annot $sloc
+    ExprFunc(fn, args, body) |> loc_annot ($symbolstartpos, $endpos(args))
   }
   // Multi-line function
   | DEF fn = ID args = fn_args? EOS? body = nonempty_list(top_statement) END {
@@ -162,50 +152,61 @@ func:
     in
     let empty_body = ExprEmptyBlock |> loc_annot $sloc in
     let body_expr = ExprBlock(body, empty_body) |> loc_annot $loc(body) in
-    ExprFunc(fn, args, body_expr) |> loc_annot $sloc
+    ExprFunc(fn, args, body_expr) |> loc_annot ($symbolstartpos, $endpos(args))
   }
   ;
 
 class_def:
-  | CLASSDEF cls = const EOS END {
-    let (c, nesting) = cls in
-    let nesting_t = List.map (fun x -> (x, Any)) nesting in
-    let const = ExprConst((c, Any), nesting_t) |> loc_annot $loc(cls) in
+  // class << self
+  | CLASSDEF LSHIFT SELF EOS END {
+    let const = ExprConst(("<EIGENCLASS>", Any), []) |> loc_annot $sloc in
     let empty_body = ExprEmptyBlock |> loc_annot $sloc in
     let class_body = ExprClassBody(empty_body) |> loc_annot $sloc in
-    ExprConstAssign(const, class_body) |> loc_annot ($symbolstartpos, $endpos(cls))
+    ExprConstAssign(const, class_body) |> loc_annot $sloc
   }
-  | CLASSDEF cls = const EOS body = nonempty_list(top_statement) END {
-    let (c, nesting) = cls in
-    let nesting_t = List.map (fun x -> (x, Any)) nesting in
-    let const = ExprConst((c, Any), nesting_t) |> loc_annot $loc(cls) in
+  | _c = CLASSDEF LSHIFT _s = SELF EOS class_body = body END {
+    let const = ExprConst(("<EIGENCLASS>", Any), []) |> loc_annot $sloc in
+    ExprConstAssign(const, class_body) |> loc_annot ($startpos(_c), $endpos(_s))
+  }
+  // TODO unimplemented!!!
+  // class x < y
+  | CLASSDEF cls = const _parent = class_inherit? EOS END {
+    let empty_body = ExprEmptyBlock |> loc_annot $sloc in
+    let class_body = ExprClassBody(empty_body) |> loc_annot $sloc in
+    let (_, loc) = cls in
+    ExprConstAssign(cls, class_body) |> loc_annot ($symbolstartpos, loc.end_pos)
+  }
+  | CLASSDEF cls = const _parent = class_inherit? EOS class_body = body END {
+    let (_, loc) = cls in
+    ExprConstAssign(cls, class_body) |> loc_annot ($symbolstartpos, loc.end_pos)
+  }
+  %inline class_inherit:
+  | LESS c = const { c }
+  body:
+  | body = nonempty_list(top_statement) {
     let empty_body = ExprEmptyBlock |> loc_annot $sloc in
     let body_expr = List.fold_left (fun acc expr ->
       ExprBlock(expr, acc) |> loc_annot $sloc
     ) empty_body @@ List.rev body in
-    let class_body = ExprClassBody(body_expr) |> loc_annot $loc(body) in
-    ExprConstAssign(const, class_body) |> loc_annot ($symbolstartpos, $endpos(cls))
+    ExprClassBody(body_expr) |> loc_annot $loc(body)
   }
+
 
 mod_def:
   | MODDEF cls = const EOS END {
-    let (c, nesting) = cls in
-    let nesting_t = List.map (fun x -> (x, Any)) nesting in
-    let const = ExprConst((c, Any), nesting_t) |> loc_annot $loc(cls) in
     let empty_body = ExprEmptyBlock |> loc_annot $sloc in
     let class_body = ExprModuleBody(empty_body) |> loc_annot $sloc in
-    ExprConstAssign(const, class_body) |> loc_annot ($symbolstartpos, $endpos(cls))
+    let (_, loc) = cls in
+    ExprConstAssign(cls, class_body) |> loc_annot ($symbolstartpos, loc.end_pos)
   }
   | MODDEF cls = const EOS body = nonempty_list(top_statement) END {
-    let (c, nesting) = cls in
-    let nesting_t = List.map (fun x -> (x, Any)) nesting in
-    let const = ExprConst((c, Any), nesting_t) |> loc_annot $loc(cls) in
     let empty_body = ExprEmptyBlock |> loc_annot $sloc in
     let body_expr = List.fold_left (fun acc expr ->
       ExprBlock(expr, acc) |> loc_annot $sloc
     ) empty_body @@ List.rev body in
     let class_body = ExprModuleBody(body_expr) |> loc_annot $loc(body) in
-    ExprConstAssign(const, class_body) |> loc_annot ($symbolstartpos, $endpos(cls))
+    let (_, loc) = cls in
+    ExprConstAssign(cls, class_body) |> loc_annot ($symbolstartpos, loc.end_pos)
   }
 
 primitive:
@@ -258,14 +259,13 @@ list_fields:
 const:
   | root = NAMESPACE? clist = separated_nonempty_list(NAMESPACE, CONST) {
     let clist = match root with
-    | Some(_) -> "~ROOT~" :: clist
+    | Some(_) -> "<ROOT>" :: clist
     | None -> clist 
     in 
     match List.rev clist with
     | [] -> $syntaxerror
-    | c :: [] -> (c, [])
-    | c :: ns -> let nesting = List.fold_left (fun acc const ->
-      (String.concat "::" @@ List.rev (const :: acc)) :: acc
-    ) [] (List.rev ns) in (c, nesting)
+    | const :: nesting -> 
+      let nesting_t = List.map (fun x -> (x, Any)) nesting in
+      ExprConst((const, Any), nesting_t) |> loc_annot $sloc
   }
   ;

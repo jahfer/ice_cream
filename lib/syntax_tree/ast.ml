@@ -243,23 +243,26 @@ end = struct
     |> print_endline *)
 
   let create (ast) = 
-    (* todo this needs to take the accumulator as well *)
     let rec traverse
       (context : context)
       (expression : Location.t expression) =
 
-      (* print_context context; *)
-
       let (expr, _loc) = expression in
       match expr with
 
-      | ExprConstAssign ((ExprConst ((name, _t), _nesting), _loc), e) -> (
-        let list = List.assoc KConstAssign context.node_list in
-        list := NodeSet.add (expression, context.nesting) !list;
+      | ExprConstAssign ((ExprConst ((name, _t), nesting), _loc), e) -> (
+        let original_nesting = context.nesting in
+        let ys = List.map (fun (x, _) -> (Const x)) nesting in
+        let n = List.append ys context.nesting in
 
-        let c = { context with nesting = (Const name) :: context.nesting } in
+        let list = List.assoc KConstAssign context.node_list in
+        list := NodeSet.add (expression, n) !list;
+
+        let c = { context with nesting = (Const name) :: n } in
         let c' = traverse c e in
-        { c' with nesting = (List.tl c'.nesting) }
+        (* TODO: Capture context.nesting before any transformations
+           rather than assume it's a single pop *)
+        { c' with nesting = original_nesting }
       )
 
       | ExprBlock (e1, e2) ->
