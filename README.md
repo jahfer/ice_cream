@@ -37,7 +37,10 @@ module ChatApp
     attr_reader :from
     attr_reader :reply_to
 
-    def initialize(from, string); end
+    def initialize(from, string)
+      @from = from
+      @string = string
+    end
 
     def reply(from, string)
       m = Message.new
@@ -110,7 +113,12 @@ end
                 (def `initialize 
                     (params 
                         (param `from) 
-                        (param `string)) nil) 
+                        (param `string)) 
+                    (ivasgn @from 
+                        (lvar `from)) 
+                    (ivasgn @string 
+                        (lvar `string)) 
+                    ()) 
                 (def `reply 
                     (params 
                         (param `from) 
@@ -148,84 +156,84 @@ end
 ```
 CONST ASSIGNMENTS
 
-=> ::ChatApp
+Definition of ::ChatApp::VERSION
      ...
      2|   VERSION = "1.0.0"
-      | ^^^^^^^^^^^^^^^^^^^
+      |   ^^^^^^^
 
-=> ::ChatApp
+Definition of ::ChatApp::User
      ...
      4|   class User
       |   ^^^^^^^^^^
 
-=> ::ChatApp
+Definition of ::ChatApp::Bot
      ...
     11|   class Bot
       |   ^^^^^^^^^
 
-=> ::ChatApp
+Definition of ::ChatApp::Message
      ...
     19|   class Message
       |   ^^^^^^^^^^^^^
 
-=> ::ChatApp
+Definition of ::ChatApp::Channel
      ...
     36|   class Channel
       |   ^^^^^^^^^^^^^
 
-=> 
+Definition of ::ChatApp
      ...
      1| module ChatApp
       | ^^^^^^^^^^^^^^
 
 LOCAL VARIABLE ASSIGNMENTS
 
-=> ::ChatApp::Message
+Scope: ::ChatApp::Message
      ...
     31|       m = Message.new
-      |       ^^^^^^^^^^^^^^^
+      |       ^
 
 INSTANCE VARIABLE ASSIGNMENTS
 
-=> ::ChatApp::Message
+Scope: ::ChatApp::Message
      ...
     26|       @from = from
-      |       ^^^^^^^^^^^^
+      |       ^^^^^
 
-=> ::ChatApp::Message
+Scope: ::ChatApp::Message
      ...
     27|       @string = string
-      |       ^^^^^^^^^^^^^^^^
+      |       ^^^^^^^
 
 FUNCTION DEFINITIONS
 
-=> ::ChatApp::User
+Scope: ::ChatApp::User
      ...
      8|     def initialize(login, email); end
-      |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+      |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-=> ::ChatApp::Bot
+Scope: ::ChatApp::Bot
      ...
     16|     def initialize(name, owner); end
-      |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+      |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-=> ::ChatApp::Message
+Scope: ::ChatApp::Message
      ...
     25|     def initialize(from, string)
       |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-=> ::ChatApp::Message
+Scope: ::ChatApp::Message
      ...
     30|     def reply(from, string)
       |     ^^^^^^^^^^^^^^^^^^^^^^^
 
-=> ::ChatApp::Channel
+Scope: ::ChatApp::Channel
      ...
     42|     def initialize(name); end
-      |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+      |     ^^^^^^^^^^^^^^^^^^^^
 
-=> ::ChatApp::Channel
+Scope: ::ChatApp::Channel
      ...
     43|     def each_member; end
-      |     ^^^^^^^^^^^^^^^^^^^^
+      |     ^^^^^^^^^^^^^^^
 ```
