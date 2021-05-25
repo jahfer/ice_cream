@@ -63,16 +63,8 @@ let parse_from_filename filename =
   index.node_list
   |> List.assoc Ast.Index.KConstAssign
   |> (fun x -> x.contents)
-  |> Ast.Index.NodeSet.iter (fun ((expr, loc), scope) ->
-    let scope_str = scope_as_string scope in
-    begin
-      match expr with
-      | ExprConstAssign ((ExprConst ((name, _), _), _), _) -> begin
-        Printf.printf "\nDefinition of %s::%s\n" scope_str name
-      end
-      | _ -> failwith "Oops."
-    end;
-    Location.print_loc loc
+  |> Ast.Index.NodeSet.iter (fun node ->
+    print_endline @@ Ast.Index.Node.Reader.read node
   );
   print_endline "";
 
@@ -80,10 +72,10 @@ let parse_from_filename filename =
   index.node_list
   |> List.assoc Ast.Index.KAssign
   |> (fun x -> x.contents)
-  |> Ast.Index.NodeSet.iter (fun ((_, loc), scope) ->
+  |> Ast.Index.NodeSet.iter (fun node ->
     print_string "\nScope: ";
-    print_endline @@ scope_as_string scope;
-    Location.print_loc loc
+    print_endline @@ scope_as_string node.scope;
+    Location.print_loc node.location
   );
   print_endline "";
 
@@ -91,10 +83,10 @@ let parse_from_filename filename =
   index.node_list
   |> List.assoc Ast.Index.KIVarAssign
   |> (fun x -> x.contents)
-  |> Ast.Index.NodeSet.iter (fun ((_, loc), scope) ->
+  |> Ast.Index.NodeSet.iter (fun node ->
     print_string "\nScope: ";
-    print_endline @@ scope_as_string scope;
-    Location.print_loc loc
+    print_endline @@ scope_as_string node.scope;
+    Location.print_loc node.location
   );
   print_endline "";
 
@@ -102,10 +94,10 @@ let parse_from_filename filename =
   index.node_list
   |> List.assoc Ast.Index.KFunc
   |> (fun x -> x.contents)
-  |> Ast.Index.NodeSet.iter (fun ((_, loc), scope) ->
+  |> Ast.Index.NodeSet.iter (fun node ->
     print_string "\nScope: ";
-    print_endline @@ scope_as_string scope;
-    Location.print_loc loc;
+    print_endline @@ scope_as_string node.scope;
+    Location.print_loc node.location
   );
 
   close_in inx

@@ -46,3 +46,15 @@ let print_loc loc =
   let offset = pos_column loc.start_pos in
   let width = (pos_column loc.end_pos - pos_column loc.start_pos) in
   printf "%*s%s\n" offset " " (String.make width '^')
+
+
+let loc_as_string loc =
+  let buf = Buffer.create 200 in
+  let open Printf in
+  bprintf buf "%5s...\n" " ";
+  bprintf buf "%6d| %s\n" loc.start_pos.pos_lnum (slice_at_location loc);
+  bprintf buf "%6s|" " ";
+  let offset = pos_column loc.start_pos in
+  let width = (pos_column loc.end_pos - pos_column loc.start_pos) in
+  bprintf buf "%*s%s\n" offset " " (String.make width '^');
+  Buffer.contents buf

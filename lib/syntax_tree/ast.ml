@@ -168,19 +168,30 @@ module Index : sig
   type scope = const list 
 
   module Node : sig
-    type t = Location.t expression * scope
+    type t = {
+      id : int;
+      expr : Location.t expr;
+      location : Location.t;
+      parent : t option ref;
+      scope : scope;
+    }
+    
+    val create : Location.t expression -> scope -> t
+
     val compare : t -> t -> int
+
+    module Reader : sig
+      val read : t -> string
+    end
   end
 
   module NodeSet : Set.S with type elt = Node.t
 
   type node_list_t = (type_key * NodeSet.t ref) list
   type range = { pos_beg: int; pos_end: int }
-  type index_map_t = (type_key * ((type_key * range) list)) list
   type context = {
     nesting : const list;
     node_list : node_list_t;
-    index: index_map_t;
   }
 
   val create : (Location.t expression list) -> context
@@ -196,24 +207,55 @@ end = struct
   type scope = const list
 
   module Node = struct
-    type t = Location.t expression * scope
+    (* 
+      TODO: define cross-file "scopes" based on module definitions.
+      Browse defined variables by given scope (within file and across)
+    *)
 
-    let get_location (x : t) = let ((_, loc), _) = x in loc
+    type t = {
+      id : int;
+      expr : Location.t expr;
+      location : Location.t;
+      parent : t option ref;
+      scope : scope;
+    }
+
+    let create (input : Location.t expression) (scope : scope) = 
+      let (expr, location) = input in {
+        id = location.id;
+        expr;
+        location;
+        parent = ref None;
+        scope;
+      }
 
     let compare (a : t) (b : t) = 
-      let x, y = get_location a, get_location b in
-      Stdlib.compare x.id y.id
+      Stdlib.compare a.id b.id
+
+    module Reader = struct
+      let scope_as_string (scope) = 
+        scope
+        |> List.rev_map (fun x -> match x with Root -> "" | Const x -> x)
+        |> String.concat "::"
+
+      let read (node : t) = 
+        let scope_str = scope_as_string node.scope in
+        let title = match node.expr with
+        | ExprConstAssign ((ExprConst ((name, _), _), _), _) ->
+          let name = String.concat "::" [scope_str; name] in
+          Printf.sprintf "\nDefinition of %s" name
+        | _ -> raise (Failure "oops") in
+        Printf.sprintf "%s\n%s" title (Location.loc_as_string node.location)
+    end
   end
 
   module NodeSet = Set.Make(Node)
 
   type node_list_t = (type_key * NodeSet.t ref) list
   type range = { pos_beg: int; pos_end: int }
-  type index_map_t = (type_key * ((type_key * range) list)) list
   type context = {
     nesting : scope;
     node_list : node_list_t;
-    index: index_map_t;
   }
 
   let node_list_default () : node_list_t = [
@@ -223,24 +265,10 @@ end = struct
     (KFunc, ref NodeSet.empty);
   ]
 
-  let index_default () : index_map_t = [
-    (KAssign, []);
-    (KIVarAssign, []);
-    (KConstAssign, []);
-    (KFunc, []);
-  ]
-
   let context_default () : context = {
     nesting = [Root];
     node_list = node_list_default ();
-    index = index_default ();
   }
-
-  (* let print_context ({ nesting; _ } : context) =
-    nesting
-    |> List.rev_map (fun x -> match x with Root -> "" | Const x -> x)
-    |> String.concat "::"
-    |> print_endline *)
 
   let create (ast) = 
     let rec traverse
@@ -256,12 +284,10 @@ end = struct
         let n = List.append ys context.nesting in
 
         let list = List.assoc KConstAssign context.node_list in
-        list := NodeSet.add (expression, n) !list;
+        list := NodeSet.add (Node.create expression n) !list;
 
         let c = { context with nesting = (Const name) :: n } in
         let c' = traverse c e in
-        (* TODO: Capture context.nesting before any transformations
-           rather than assume it's a single pop *)
         { c' with nesting = original_nesting }
       )
 
@@ -273,17 +299,17 @@ end = struct
 
       | ExprAssign (_, e) ->
         let list = List.assoc KAssign context.node_list in
-        list := NodeSet.add (expression, context.nesting) !list;
+        list := NodeSet.add (Node.create expression context.nesting) !list;
         traverse context e
 
       | ExprIVarAssign (_, e) ->
         let list = List.assoc KIVarAssign context.node_list in
-        list := NodeSet.add (expression, context.nesting) !list;
+        list := NodeSet.add (Node.create expression context.nesting) !list;
         traverse context e
 
       | ExprFunc (_, _, e) ->
         let list = List.assoc KFunc context.node_list in
-        list := NodeSet.add (expression, context.nesting) !list;
+        list := NodeSet.add (Node.create expression context.nesting) !list;
         traverse context e
         
       (* others *)
@@ -315,8 +341,4 @@ end
   (ExprTypeB, [ExprB 1]);
   (ExprTypeC, [ExprC 2; ExprC 4]);
   (ExprTypeD, [ExprD 3])
-]
-
-let index = [ 
-  (ExprTypeA, [(ExprTypeB, { start: 0, end: 1 })])
 ] *)
