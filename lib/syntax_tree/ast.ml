@@ -157,6 +157,82 @@ module AstPrinter = struct
     Buffer.contents buf
 end
 
+module NodeTree = struct
+  module type NODE = sig
+    type t
+    type c
+
+    val name : t -> string
+    val node_type : t -> string
+    (* val location : t -> Location.t *)
+    val children : t -> c list option
+    val make : unit -> t
+  end
+
+  type _ node =
+    | Node : 'a * (module NODE with type t = 'a and type c = 'b) -> ('a * 'b) node
+
+  let node_name : type a b. (a * b) node -> string =
+    fun (Node (x, (module M : NODE with type t = a and type c = b))) -> M.name x
+
+  let node_type : type a b. (a * b) node -> string =
+    fun (Node (x, (module M : NODE with type t = a and type c = b))) -> M.node_type x
+
+  let node_children : type a b. (a * b) node -> b list option =
+    fun (Node (x, (module M : NODE with type t = a and type c = b))) -> M.children x
+
+  let lazy_query ~f all =            
+    List.to_seq all |> Seq.filter f
+
+  let query_all ~f all =
+    List.of_seq @@ lazy_query ~f:f all
+
+  let query ~f all =
+    let result = lazy_query ~f:f all in
+    match result () with
+    | Cons (x, _) -> Some x
+    | Nil -> None
+end
+
+module TerminatingNode : NodeTree.NODE = struct
+  type t = unit
+  type c = unit NodeTree.node
+  
+  let name _ = ""
+  let node_type _ = "TerminatingNode"
+  let children _ = None
+  let make () = ()
+end
+
+module rec AssignmentNode : NodeTree.NODE = struct
+  type c = TerminatingNode.t NodeTree.node
+  type t = {
+    target : id;
+    (* location : Location.t; *)
+    children : c list
+  }
+  
+  let name t = let (name, _) = t.target in name
+  let node_type _t = "AssignmentNode"
+  (* let location t = t.location *)
+
+  let children t = Some (t.children)
+
+  let make () = { target = ("a", Nil); children = [] }
+end
+
+let () = print_endline "--------"
+
+let nodes = [
+  NodeTree.Node (AssignmentNode.make (), (module AssignmentNode))
+]
+
+let () = nodes
+|> NodeTree.query_all ~f:(fun node -> NodeTree.node_name node = "a") 
+|> List.iter (fun node -> print_endline @@ NodeTree.node_type node)
+
+let () = print_endline "--------"
+
 module Index : sig
   type type_key =
   | KAssign
@@ -170,13 +246,14 @@ module Index : sig
   module Node : sig
     type t = {
       id : int;
+      ident : string;
       expr : Location.t expr;
       location : Location.t;
       parent : t option ref;
       scope : scope;
     }
     
-    val create : Location.t expression -> scope -> t
+    val create : Location.t expression -> scope -> string -> t
 
     val compare : t -> t -> int
 
@@ -197,14 +274,15 @@ module Index : sig
   val create : (Location.t expression list) -> context
 
 end = struct
+
+  type const = Root | Const of string
+  type scope = const list
+
   type type_key =
   | KAssign
   | KIVarAssign
   | KConstAssign
   | KFunc
-
-  type const = Root | Const of string
-  type scope = const list
 
   module Node = struct
     (* 
@@ -214,15 +292,17 @@ end = struct
 
     type t = {
       id : int;
+      ident : string;
       expr : Location.t expr;
       location : Location.t;
       parent : t option ref;
       scope : scope;
     }
 
-    let create (input : Location.t expression) (scope : scope) = 
+    let create (input : Location.t expression) (scope : scope) (ident : string)= 
       let (expr, location) = input in {
         id = location.id;
+        ident;
         expr;
         location;
         parent = ref None;
@@ -284,7 +364,7 @@ end = struct
         let n = List.append ys context.nesting in
 
         let list = List.assoc KConstAssign context.node_list in
-        list := NodeSet.add (Node.create expression n) !list;
+        list := NodeSet.add (Node.create expression n name) !list;
 
         let c = { context with nesting = (Const name) :: n } in
         let c' = traverse c e in
@@ -297,19 +377,19 @@ end = struct
 
       | ExprClassBody e | ExprModuleBody e -> traverse context e
 
-      | ExprAssign (_, e) ->
+      | ExprAssign (name, e) ->
         let list = List.assoc KAssign context.node_list in
-        list := NodeSet.add (Node.create expression context.nesting) !list;
+        list := NodeSet.add (Node.create expression context.nesting name) !list;
         traverse context e
 
-      | ExprIVarAssign (_, e) ->
+      | ExprIVarAssign (name, e) ->
         let list = List.assoc KIVarAssign context.node_list in
-        list := NodeSet.add (Node.create expression context.nesting) !list;
+        list := NodeSet.add (Node.create expression context.nesting name) !list;
         traverse context e
 
-      | ExprFunc (_, _, e) ->
+      | ExprFunc (name, _, e) ->
         let list = List.assoc KFunc context.node_list in
-        list := NodeSet.add (Node.create expression context.nesting) !list;
+        list := NodeSet.add (Node.create expression context.nesting name) !list;
         traverse context e
         
       (* others *)
