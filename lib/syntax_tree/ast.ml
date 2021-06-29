@@ -158,28 +158,29 @@ module AstPrinter = struct
 end
 
 module NodeTree = struct
-  module type NODE = sig
+  module type S = sig
     type t
-    type c
+    type u
 
     val name : t -> string
     val node_type : t -> string
     (* val location : t -> Location.t *)
-    val children : t -> c list option
-    val make : unit -> t
+    val children : t -> u list option
   end
 
-  type _ node =
-    | Node : 'a * (module NODE with type t = 'a and type c = 'b) -> ('a * 'b) node
+  type node =
+    | Node : 'a * (module S with type t = 'a and type u = node) -> node
 
-  let node_name : type a b. (a * b) node -> string =
-    fun (Node (x, (module M : NODE with type t = a and type c = b))) -> M.name x
+  module type NODE = S with type u = node
 
-  let node_type : type a b. (a * b) node -> string =
-    fun (Node (x, (module M : NODE with type t = a and type c = b))) -> M.node_type x
+  let node_name : node -> string =
+    fun (Node (x, (module M))) -> M.name x
 
-  let node_children : type a b. (a * b) node -> b list option =
-    fun (Node (x, (module M : NODE with type t = a and type c = b))) -> M.children x
+  let node_type : node -> string =
+    fun (Node (x, (module M))) -> M.node_type x
+
+  let node_children : node -> node list option =
+    fun (Node (x, (module M))) -> M.children x
 
   let lazy_query ~f all =            
     List.to_seq all |> Seq.filter f
@@ -194,37 +195,28 @@ module NodeTree = struct
     | Nil -> None
 end
 
-module TerminatingNode : NodeTree.NODE = struct
-  type t = unit
-  type c = unit NodeTree.node
-  
-  let name _ = ""
-  let node_type _ = "TerminatingNode"
-  let children _ = None
-  let make () = ()
-end
+type node_t = {
+  target : id;
+  (* location : Location.t; *)
+  children : NodeTree.node list
+}
 
-module rec AssignmentNode : NodeTree.NODE = struct
-  type c = TerminatingNode.t NodeTree.node
-  type t = {
-    target : id;
-    (* location : Location.t; *)
-    children : c list
-  }
+module rec AssignmentNode : NodeTree.NODE with type t = node_t = struct
+  type t = node_t
+  type u = NodeTree.node
   
   let name t = let (name, _) = t.target in name
   let node_type _t = "AssignmentNode"
   (* let location t = t.location *)
 
   let children t = Some (t.children)
-
-  let make () = { target = ("a", Nil); children = [] }
 end
 
 let () = print_endline "--------"
 
+
 let nodes = [
-  NodeTree.Node (AssignmentNode.make (), (module AssignmentNode))
+  NodeTree.Node ({ target = ("a", Nil); children = [] }, (module AssignmentNode));
 ]
 
 let () = nodes
