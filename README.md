@@ -11,6 +11,49 @@
 
 ### Current Status: Parsing (mostly) works!
 
+#### Unsupported Syntax (for now)
+
+```ruby
+# string interpolation
+"Hello, #{name}"
+
+# curly-braced do-blocks 
+foo { |x| x.bar }
+
+# method assignment
+x.foo = bar
+
+# array/hash assignment
+hash[:foo] = bar
+
+# named parameters
+def foo(bar:); end
+
+# default positional argument values
+def foo(bar = true); end
+
+# default named parameter values
+def foo(bar: true); end
+
+# heredoc
+<<~MSG
+Hello, name!
+MSG
+
+# heredoc method call
+<<~MSG.trim
+Hello
+world!
+MSG
+
+# ambiguous do-block
+foo bar do |x| # block belongs to foo, not bar!
+  x.baz
+end
+
+# ...and a lot more!
+```
+
 #### Input
 ```ruby
 module ChatApp
