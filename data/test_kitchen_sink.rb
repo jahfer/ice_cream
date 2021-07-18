@@ -78,3 +78,7 @@ class Foo::Bar
     def thing; end
   end
 end
+
+y.each_with_object({}) do |x, hash|
+  x.foo
+end

@@ -10,7 +10,8 @@
 %token LESS LSHIFT
 %token <string> ID FID IVAR
 %token <string> CONST
-%token EQ DEF END LAMBDA DOT CLASSDEF MODDEF
+%token EQ DEF END LAMBDA DOT CLASSDEF MODDEF PIPE
+%token DO
 
 %{
   open Ast
@@ -36,9 +37,10 @@ top_statement:
   %inline stmt:
   | s = statement { s }
   // this needs to be here so we don't swallow the EOS
+  // TODO I don't remember why this exists...
   | m = ID args = separated_nonempty_list(COMMA, statement) {
     let sub_expr = ExprValue(Nil) |> loc_annot $sloc in
-    ExprCall(sub_expr, m, args)   |> loc_annot $sloc
+    ExprCall(sub_expr, m, (args, None)) |> loc_annot $sloc
   }
   ;
 
@@ -84,6 +86,17 @@ expr:
   | f = func          { f }
   ;
 
+block:
+  | DO EOS? body = block_body END {
+    ExprProc ([], body) |> loc_annot $sloc
+  }
+  | DO args = block_args EOS? body = block_body END {
+    ExprProc (args, body) |> loc_annot $sloc
+  }
+  %inline block_body:
+  | s = statement statement_end? { s }
+  ;
+
 command_call:
   c = command { c } ;
 
@@ -98,13 +111,13 @@ command:
   }
   | c1 = ID call_op c2 = method_call {
     let sub_expr = ExprVar((c1, Any)) |> loc_annot $loc(c1) in
-    ExprCall(sub_expr, c2, []) |> loc_annot $sloc
+    ExprCall(sub_expr, c2, ([], None)) |> loc_annot $sloc
   }
   | cst = const call_op c2 = method_call {
-    ExprCall(cst, c2, []) |> loc_annot $sloc
+    ExprCall(cst, c2, ([], None)) |> loc_annot $sloc
   }
   | c1 = ID call_op c2 = method_call args = command_args {
-    let sub_expr = ExprVar((c1, Any))   |> loc_annot $loc(c1) in
+    let sub_expr = ExprVar((c1, Any)) |> loc_annot $loc(c1) in
     ExprCall(sub_expr, c2, args) |> loc_annot $sloc
   }
   | cst = const call_op c2 = method_call args = command_args {
@@ -119,6 +132,11 @@ method_call:
 
 command_args:
   args = call_args { args } ;
+
+block_args:
+  PIPE p = separated_list(COMMA, ID) PIPE { 
+    List.map (fun x -> (x, Any)) p
+  }
 
 iv_identifier:
   iv = IVAR { iv, Any } ;
@@ -231,6 +249,7 @@ lambda:
   ;
 
 lambda_body:
+  // TODO: Does this need to be a list of statements?
   | LAMBEG s = statement statement_end? RBRACE {
     s
   }
@@ -245,7 +264,10 @@ fn_args:
   } ;
 
 call_args:
-  LPAREN p = separated_list(COMMA, statement) RPAREN { p } ;
+  // TODO: ambiguous whether block belongs to interior or exterior statement
+  | LPAREN p = separated_list(COMMA, statement) RPAREN b = block? { p, b }
+  | b = block { [], Some(b) }
+  ;
 
 obj_fields:
   obj = separated_list(COMMA, obj_field)    { obj } ;
@@ -254,7 +276,7 @@ obj_field:
   k = primitive COLON v = primitive         { k, v } ;
 
 list_fields:
-  vl = separated_list(COMMA, primitive)     { vl } ;
+  | vl = separated_list(COMMA, statement)     { vl } ;
 
 const:
   | root = NAMESPACE? clist = separated_nonempty_list(NAMESPACE, CONST) {

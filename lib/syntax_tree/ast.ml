@@ -1,26 +1,29 @@
-type value =
-  | Hash of (value * value) list
+type 'a value =
+  | Hash of ('a value * 'a value) list
   | Bool of bool
   | Float of float
   | Int of int
-  | Array of value list
+  | Array of 'a expression list
   | String of string
   | Symbol of string
   | Nil
   | Any
 
-and id = string * value
+and 'a id = string * 'a value
 
-and nesting = id list
+and 'a nesting = 'a id list
+
+and 'a call_args = 'a expression list * 'a expression option (* positional args, block *)
 
 and 'a expr =
-  | ExprCall of 'a expression * string * 'a expression list (* receiver, method, args *)
-  | ExprFunc of string * id list * 'a expression (* name, args, body *)
-  | ExprLambda of id list * 'a expression (* args, body *)
-  | ExprValue of value
-  | ExprVar of id
-  | ExprConst of id * nesting
-  | ExprIVar of id
+  | ExprCall of 'a expression * string * 'a call_args (* receiver, method, args *)
+  | ExprFunc of string * 'a id list * 'a expression (* name, args, body *)
+  | ExprLambda of 'a id list * 'a expression (* args, body *)
+  | ExprProc of 'a id list * 'a expression (* args, body *)
+  | ExprValue of 'a value
+  | ExprVar of 'a id
+  | ExprConst of 'a id * 'a nesting
+  | ExprIVar of 'a id
   | ExprAssign of string * 'a expression
   | ExprIVarAssign of string * 'a expression
   | ExprConstAssign of 'a expression * 'a expression
@@ -36,8 +39,9 @@ let rec map_metadata fn expr meta =
   let new_expr = match expr with
     | ExprFunc (name, args, (body_expr, body_meta)) ->
       ExprFunc (name, args, swap_meta body_expr body_meta)
-    | ExprLambda (args, (body_expr, body_meta)) ->
-      ExprLambda (args, swap_meta body_expr body_meta)
+    | ExprLambda (args, (body_expr, body_meta))
+    | ExprProc (args, (body_expr, body_meta)) ->
+      ExprProc (args, swap_meta body_expr body_meta)
     | ExprConst (name, nesting) ->
       ExprConst (name, nesting)
     | ExprAssign (name, (a_expr, a_meta)) ->
@@ -49,10 +53,11 @@ let rec map_metadata fn expr meta =
     | ExprIVar name -> ExprIVar name
     | ExprVar name -> ExprVar name
     | ExprValue v -> ExprValue v
-    | ExprCall ((expr_a, meta_a), b, args) ->
+    | ExprCall ((expr_a, meta_a), b, (positional_args, block_arg)) ->
       let new_expr = swap_meta expr_a meta_a
-      and new_args = List.map (fun (e, m) -> swap_meta e m) args
-      in ExprCall (new_expr, b, new_args)
+      and new_positional_args = List.map (fun (e, m) -> swap_meta e m) positional_args
+      and new_block_arg = Option.map (fun (block, block_meta) -> swap_meta block block_meta) block_arg
+      in ExprCall (new_expr, b, (new_positional_args, new_block_arg))
     | ExprBlock ((expr_a, meta_a), (expr_b, meta_b)) ->
       let a = swap_meta expr_a meta_a
       and b = swap_meta expr_b meta_b
@@ -70,12 +75,18 @@ module AstPrinter = struct
     Printf.sprintf "%s" (print_ast expr)
 
   and print_ast = function
-    | ExprCall (receiver, meth, args) ->
-      Printf.sprintf "(send %s `%s (args %s))" (print_cexpr receiver) meth (print_cexpr_list args)
+    | ExprCall (receiver, meth, (positional_args, block)) ->
+      Printf.sprintf "(send %s `%s (args %s (blk %s)))"
+        (print_cexpr receiver)
+        meth
+        (print_list print_cexpr positional_args)
+        (Option.value ~default:"None" (Option.map print_cexpr block))
     | ExprFunc (name, params, body) ->
       Printf.sprintf "(def `%s %s %s)" name (print_params params) (print_cexpr body)
     | ExprLambda (params, body) ->
       Printf.sprintf "(lambda %s %s)" (print_params params) (print_cexpr body)
+    | ExprProc (params, body) ->
+      Printf.sprintf "(proc %s %s)" (print_params params) (print_cexpr body)
     | ExprVar ((name, _value))  ->
       Printf.sprintf "(lvar `%s)" name
     | ExprConst ((name, _value), nesting) ->
@@ -101,7 +112,7 @@ module AstPrinter = struct
 
   and print_value = function
     | Hash obj     -> print_hash obj
-    | Array l      -> Printf.sprintf "[%s]" (print_value_list l)
+    | Array l      -> Printf.sprintf "[%s]" (print_list print_cexpr l)
     | String s     -> Printf.sprintf "\"%s\"" s
     | Symbol s     -> Printf.sprintf ":%s" s
     | Int i        -> Printf.sprintf "%d" i
@@ -132,12 +143,12 @@ module AstPrinter = struct
     Buffer.add_string buf " }";
     Buffer.contents buf
 
-  and print_value_list lst =
+  and print_list: 'a. ('a -> string) -> ('a list) -> string = fun printer lst ->
     let buf = Buffer.create 256 in
     List.iteri (fun i v ->
         if i > 0 then
           Buffer.add_string buf " ";
-        Buffer.add_string buf (print_value v)) lst;
+        Buffer.add_string buf (printer v)) lst;
     Buffer.contents buf
 
   and print_nesting lst =
@@ -147,31 +158,23 @@ module AstPrinter = struct
           Buffer.add_string buf " ";
         Printf.bprintf buf "%s" name) lst;
     Buffer.contents buf
-
-  and print_cexpr_list lst =
-    let buf = Buffer.create 256 in
-    List.iteri (fun i v ->
-        if i > 0 then
-          Buffer.add_string buf " ";
-        Buffer.add_string buf (print_cexpr v)) lst;
-    Buffer.contents buf
 end
 
 module NodeTree = struct
   module type S = sig
     type t
-    type u
+    type node
 
     val name : t -> string
     val node_type : t -> string
     (* val location : t -> Location.t *)
-    val children : t -> u list option
+    val children : t -> node list option
   end
 
   type node =
-    | Node : 'a * (module S with type t = 'a and type u = node) -> node
+    | Node : 'a * (module S with type t = 'a and type node = node) -> node
 
-  module type NODE = S with type u = node
+  module type NODE = S with type node = node
 
   let node_name : node -> string =
     fun (Node (x, (module M))) -> M.name x
@@ -196,14 +199,14 @@ module NodeTree = struct
 end
 
 type node_t = {
-  target : id;
+  target : Location.t id;
   (* location : Location.t; *)
   children : NodeTree.node list
 }
 
 module rec AssignmentNode : NodeTree.NODE with type t = node_t = struct
   type t = node_t
-  type u = NodeTree.node
+  type node = NodeTree.node
   
   let name t = let (name, _) = t.target in name
   let node_type _t = "AssignmentNode"
@@ -212,15 +215,27 @@ module rec AssignmentNode : NodeTree.NODE with type t = node_t = struct
   let children t = Some (t.children)
 end
 
+module rec FooNode : NodeTree.NODE with type t = int = struct
+  type t = int
+  type node = NodeTree.node
+  
+  let name _t = "Foo"
+  let node_type _t = "FooNode"
+  (* let location t = t.location *)
+
+  let children _t = None
+end
+
 let () = print_endline "--------"
 
 
 let nodes = [
   NodeTree.Node ({ target = ("a", Nil); children = [] }, (module AssignmentNode));
+  NodeTree.Node (8, (module FooNode));
 ]
 
 let () = nodes
-|> NodeTree.query_all ~f:(fun node -> NodeTree.node_name node = "a") 
+|> NodeTree.query_all ~f:(fun node -> NodeTree.node_name node = "Foo") 
 |> List.iter (fun node -> print_endline @@ NodeTree.node_type node)
 
 let () = print_endline "--------"
@@ -387,6 +402,7 @@ end = struct
       (* others *)
       | ExprCall _
       | ExprLambda _
+      | ExprProc _
       | ExprValue _
       | ExprVar _
       | ExprConst _

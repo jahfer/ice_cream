@@ -53,6 +53,7 @@ rule read state = parse
     end
   }
   | "def"    { newline_agnostic_tok state; DEF }
+  | "do"     { newline_agnostic_tok state; DO }
   | "class"  { ack_tok state; CLASSDEF }
   | "module" { ack_tok state; MODDEF }
   | "->"     {
@@ -65,12 +66,13 @@ rule read state = parse
   }
   | '"'      { ack_tok state; read_string (Buffer.create 17) lexbuf }
   | "::"     { ack_tok state; NAMESPACE }
-  | ':'      { ack_tok state; COLON }
-  | ';'      { ack_tok state; EOS }
-  | ','      { ack_tok state; COMMA }
-  | '='      { ack_tok state; EQ }
   | "<<"     { ack_tok state; LSHIFT }
+  | ':'      { ack_tok state; COLON }
+  | ','      { ack_tok state; COMMA }
+  | '|'      { ack_tok state; PIPE }
   | '<'      { ack_tok state; LESS }
+  | ';'      { ack_tok state; EOS }
+  | '='      { ack_tok state; EQ }
   (* | '>'      { ack_tok state; GREATER } *)
   | '{'      { newline_agnostic_tok state;
     match state.lambda_stack with
