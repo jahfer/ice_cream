@@ -95,11 +95,15 @@ rule read state = parse
   | "self"   { ack_tok state; SELF }
   | const    { terminating_tok state; CONST (Lexing.lexeme lexbuf) }
   | ivar     { terminating_tok state; IVAR (Lexing.lexeme lexbuf) }
+  | id as i '[' {
+    newline_agnostic_tok state;
+    ARR_ACCESS_ID (i)
+  }
   | id       {
     terminating_tok state;
     if state.fn_call then begin
       state.fn_call <- false;
-      FID (Lexing.lexeme lexbuf)
+      METHOD (Lexing.lexeme lexbuf)
     end else begin
       ID (Lexing.lexeme lexbuf)
     end

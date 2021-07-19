@@ -4,14 +4,14 @@
 %token <string> STRING
 %token TRUE FALSE NIL
 %token LBRACE RBRACE LBRACK RBRACK LPAREN RPAREN LAMBEG
-%token COLON COMMA
+%token COLON COMMA 
 %token EOS EOF
 %token SELF
 %token LESS LSHIFT
-%token <string> ID FID IVAR
+%token <string> ID METHOD IVAR ARR_ACCESS_ID
 %token <string> CONST
 %token EQ DEF END LAMBDA DOT CLASSDEF MODDEF PIPE
-%token DO
+%token DO 
 
 %{
   open Ast
@@ -123,12 +123,16 @@ command:
   | cst = const call_op c2 = method_call args = command_args {
     ExprCall(cst, c2, args) |> loc_annot $sloc
   }
+  | c1 = ARR_ACCESS_ID arg = statement RBRACK {
+    let sub_expr = ExprVar((c1, Any)) |> loc_annot $loc(c1) in
+    ExprCall(sub_expr, "[]", ([arg], None)) |> loc_annot $sloc
+  }
   ;
 
 call_op: DOT { } ;
 
 method_call:
-  id = FID { id } ;
+  id = METHOD { id } ;
 
 command_args:
   args = call_args { args } ;

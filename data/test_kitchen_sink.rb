@@ -36,6 +36,7 @@ false
 
 y = [1,2,3]
 y.first
+n = y[0]
 z = y.first
 
 func1 = -> { x = 45 }
@@ -80,5 +81,5 @@ class Foo::Bar
 end
 
 y.each_with_object({}) do |x, hash|
-  x.foo
+  hash[x]
 end
