@@ -160,87 +160,7 @@ module AstPrinter = struct
     Buffer.contents buf
 end
 
-module NodeTree = struct
-  module type S = sig
-    type t
-    type node
-
-    val name : t -> string
-    val node_type : t -> string
-    (* val location : t -> Location.t *)
-    val children : t -> node list option
-  end
-
-  type node =
-    | Node : 'a * (module S with type t = 'a and type node = node) -> node
-
-  module type NODE = S with type node = node
-
-  let node_name : node -> string =
-    fun (Node (x, (module M))) -> M.name x
-
-  let node_type : node -> string =
-    fun (Node (x, (module M))) -> M.node_type x
-
-  let node_children : node -> node list option =
-    fun (Node (x, (module M))) -> M.children x
-
-  let lazy_query ~f all =            
-    List.to_seq all |> Seq.filter f
-
-  let query_all ~f all =
-    List.of_seq @@ lazy_query ~f:f all
-
-  let query ~f all =
-    let result = lazy_query ~f:f all in
-    match result () with
-    | Cons (x, _) -> Some x
-    | Nil -> None
-end
-
-type node_t = {
-  target : Location.t id;
-  (* location : Location.t; *)
-  children : NodeTree.node list
-}
-
-module rec AssignmentNode : NodeTree.NODE with type t = node_t = struct
-  type t = node_t
-  type node = NodeTree.node
-  
-  let name t = let (name, _) = t.target in name
-  let node_type _t = "AssignmentNode"
-  (* let location t = t.location *)
-
-  let children t = Some (t.children)
-end
-
-module rec FooNode : NodeTree.NODE with type t = int = struct
-  type t = int
-  type node = NodeTree.node
-  
-  let name _t = "Foo"
-  let node_type _t = "FooNode"
-  (* let location t = t.location *)
-
-  let children _t = None
-end
-
-let () = print_endline "--------"
-
-
-let nodes = [
-  NodeTree.Node ({ target = ("a", Nil); children = [] }, (module AssignmentNode));
-  NodeTree.Node (8, (module FooNode));
-]
-
-let () = nodes
-|> NodeTree.query_all ~f:(fun node -> NodeTree.node_name node = "Foo") 
-|> List.iter (fun node -> print_endline @@ NodeTree.node_type node)
-
-let () = print_endline "--------"
-
-module Index : sig
+(* module Index : sig
   type type_key =
   | KAssign
   | KIVarAssign
@@ -422,7 +342,7 @@ end = struct
     - Function calls
     - Const reference
      *)
-end
+end *)
 
 (* let nodes = [
   (ExprTypeA, [ExprA 0; ExprA 3]);

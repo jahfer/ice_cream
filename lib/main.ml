@@ -48,8 +48,11 @@ let parse_from_filename filename =
   let ast = parse_buf_to_ast lexbuf in
   let str = string_from_ast ast in
   output_string stdout str;
+
+  (* Generate index *)
+  Ast_index.create ast;
   
-  let scope_as_string (scope) = 
+  (* let scope_as_string (scope) = 
     scope
     |> List.rev_map (fun x -> match x with Ast.Index.Root -> "" | Ast.Index.Const x -> x)
     |> String.concat "::" in
@@ -98,7 +101,7 @@ let parse_from_filename filename =
     print_string "\nScope: ";
     print_endline @@ scope_as_string node.scope;
     Location.print_loc node.location
-  );
+  ); *)
 
   close_in inx
 
