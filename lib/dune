@@ -2,4 +2,4 @@
 
 (library
   (public_name ice_cream)
-  (flags :standard -warn-error A))
+  (flags :standard -warn-error A-51))

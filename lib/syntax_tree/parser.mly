@@ -181,13 +181,13 @@ func:
 class_def:
   // class << self
   | CLASSDEF LSHIFT SELF EOS END {
-    let const = ExprConst(("<EIGENCLASS>", Any), []) |> loc_annot $sloc in
+    let const = ExprConst(("<<EIGENCLASS>>", Any), []) |> loc_annot $sloc in
     let empty_body = ExprEmptyBlock |> loc_annot $sloc in
     let class_body = ExprClassBody(empty_body) |> loc_annot $sloc in
     ExprConstAssign(const, class_body) |> loc_annot $sloc
   }
   | _c = CLASSDEF LSHIFT _s = SELF EOS class_body = body END {
-    let const = ExprConst(("<EIGENCLASS>", Any), []) |> loc_annot $sloc in
+    let const = ExprConst(("<<EIGENCLASS>>", Any), []) |> loc_annot $sloc in
     ExprConstAssign(const, class_body) |> loc_annot ($startpos(_c), $endpos(_s))
   }
   // TODO unimplemented!!!

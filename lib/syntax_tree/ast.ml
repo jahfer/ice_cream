@@ -113,7 +113,7 @@ module AstPrinter = struct
   and print_value = function
     | Hash obj     -> print_hash obj
     | Array l      -> Printf.sprintf "[%s]" (print_list print_cexpr l)
-    | String s     -> Printf.sprintf "\"%s\"" s
+    | String s     -> Printf.sprintf "%s" s
     | Symbol s     -> Printf.sprintf ":%s" s
     | Int i        -> Printf.sprintf "%d" i
     | Float x      -> Printf.sprintf "%f" x
@@ -121,6 +121,19 @@ module AstPrinter = struct
     | Bool false   -> Printf.sprintf "false"
     | Nil          -> Printf.sprintf "nil"
     | Any          -> Printf.sprintf "?"
+
+  and print_value_type = function
+  | Hash _     -> "Hash"
+  | Array _    -> "Array"
+  | String _   -> "String"
+  | Symbol _   -> "Symbol"
+  | Int _      -> "Integer"
+  | Float _    -> "Float"
+  | Bool true  -> "TrueClass"
+  | Bool false -> "FalseClass"
+  | Nil        -> "NilClass"
+  | Any        -> "?"
+
 
   and print_params arr =
     let buf = Buffer.create 256 in
