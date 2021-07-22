@@ -6,7 +6,6 @@ module NodeInterface = struct
     val node_type : elt -> string
     val location : elt -> Location.t
     val children : elt -> child_elt list option
-    val pretty_print : elt -> string
     val attributes : elt -> (string * string) list
   end
 
@@ -20,7 +19,6 @@ module NodeInterface = struct
     val node_type : t -> string
     val location : t -> Location.t
     val children : t -> node list option
-    val pretty_print : t -> string
     val attributes : t -> (string * string) list
   end
 
@@ -34,14 +32,32 @@ module NodeInterface = struct
 
   (* Helper methods *)
 
-  let pretty_print : t -> string =
-    fun (Node (x, (module M))) -> M.pretty_print x
+  let rec pretty_print : t -> string =
+    fun (Node (x, (module M))) ->
+      let node_type = M.node_type x in
+      let attributes = M.attributes x in
+      let attr_string = match attributes with
+      | [] -> ""
+      | attrs -> let vals = String.concat " "
+        (List.map (fun (k,v) -> Printf.sprintf "%s=\"%s\"" k v) attrs) in
+        " " ^ vals ^ " " in
+      match M.children x with
+      | Some (children) ->
+        Printf.sprintf "<%s%s>%s</%s>"
+          node_type
+          attr_string
+          (String.concat "\n" (List.map pretty_print children))
+          node_type
+      | None -> Printf.sprintf "<%s%s/>" node_type attr_string
 
   let node_type : t -> string =
     fun (Node (x, (module M))) -> M.node_type x
 
   let location : t -> Location.t =
     fun (Node (x, (module M))) -> M.location x
+
+  let attributes : t -> (string * string) list =
+    fun (Node (x, (module M))) -> M.attributes x
 
   let children : t -> t list option =
     fun (Node (x, (module M))) -> M.children x
@@ -78,12 +94,10 @@ module ValueNode = struct
     let node_type _ = "ValueNode"
     let location t = t.location
     let children _ = None
-    let pretty_print t =
-      Printf.sprintf "<%s type=\"%s\" value=\"%s\" />"
-        (node_type t)
-        (Ast.AstPrinter.print_value_type t.value)
-        (Ast.AstPrinter.print_value t.value)
-    let attributes _ = []
+    let attributes t = [
+      ("type", Ast.AstPrinter.print_value_type t.value);
+      ("value", Ast.AstPrinter.print_value t.value)
+    ]
   end)
 
   let make value location =
@@ -102,9 +116,9 @@ module RefNode = struct
     let node_type _ = "RefNode"
     let location t = t.location
     let children _ = None
-    let pretty_print t =
-      Printf.sprintf "<%s name=\"%s\" />" (node_type t) t.name
-    let attributes _ = []
+    let attributes t = [
+      ("name", t.name)
+    ]
   end)
 
   let from_data t =
@@ -127,20 +141,9 @@ module CallNode = struct
     let node_type _ = "CallNode"
     let location t = t.location
     let children _ = None
-    let pretty_print t =
-      let (pos_args, _blk) = t.args in
-      if (List.length pos_args) = 0 then
-        Printf.sprintf "<%s method=\"%s\"/>"
-          (node_type t)
-          t.method_name
-      else begin
-        Printf.sprintf "<%s method=\"%s\">\n%s\n</%s>"
-          (node_type t)
-          t.method_name
-          (String.concat "\n" (List.map NodeInterface.pretty_print pos_args))
-          (node_type t)
-      end
-    let attributes _ = []
+    let attributes t = [
+      ("method", t.method_name)
+    ]
   end)
 
   let make receiver method_name args location =
@@ -160,9 +163,9 @@ module MethodNode = struct
     let node_type _ = "MethodNode"
     let location t = t.location
     let children _ = None
-    let pretty_print t =
-      Printf.sprintf "<%s name=\"%s\" />" (node_type t) t.name
-    let attributes _ = []
+    let attributes t = [
+      ("name", t.name)
+    ]
   end)
 
   let make name args location children =
@@ -183,13 +186,6 @@ module ScopingNode = struct
     let location t = t.location
 
     let children t = Some(t.children)
-
-    let pretty_print t =
-      let c = Option.value ~default:[] (children t) in
-      Printf.sprintf "<%s>\n%s</%s>\n"
-        (node_type t)
-        (String.concat "\n" (List.map NodeInterface.pretty_print c))
-        (node_type t) 
 
     let attributes _ = []
   end)
@@ -214,15 +210,7 @@ module AssignmentNode = struct
 
     let location t = t.target.location
 
-    let children t = Some (t.children)
-
-    let pretty_print t =
-      let c = Option.value ~default:[] (children t) in
-      Printf.sprintf "<%s>\n%s\n%s</%s>"
-        (node_type t)
-        (NodeInterface.pretty_print (RefNode.from_data t.target))
-        (String.concat "\n" (List.map NodeInterface.pretty_print c))
-        (node_type t)
+    let children t = Some ((RefNode.from_data t.target) :: t.children)
 
     let attributes _t = []
   end)

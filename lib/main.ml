@@ -52,9 +52,9 @@ let parse_from_filename filename =
   (* Generate index *)
   let index = Ast_index.create ast in
   index
-  |> Ast_index.Query.query_all ~f:(fun node ->
+  (* |> Ast_index.Query.query_all ~f:(fun node ->
     (Ast_index.NodeInterface.node_type node) = "CallNode"
-  )
+  ) *)
   |> List.iter (fun node ->
     print_endline @@ Ast_index.NodeInterface.pretty_print node;
     (* print_endline @@ Location.loc_as_string (Ast_index.NodeInterface.location node) *)
