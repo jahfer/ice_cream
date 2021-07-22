@@ -49,6 +49,8 @@ let parse_from_filename filename =
   let str = string_from_ast ast in
   output_string stdout str;
 
+  print_endline "";
+
   (* Generate index *)
   let index = Ast_index.create ast in
   index

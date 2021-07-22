@@ -32,8 +32,8 @@ module NodeInterface = struct
 
   (* Helper methods *)
 
-  let rec pretty_print : t -> string =
-    fun (Node (x, (module M))) ->
+  let rec pretty_print : ?indent:int -> t -> string =
+    fun ?indent:(i=0) (Node (x, (module M))) ->
       let node_type = M.node_type x in
       let attributes = M.attributes x in
       let attr_string = match attributes with
@@ -43,12 +43,14 @@ module NodeInterface = struct
         " " ^ vals ^ " " in
       match M.children x with
       | Some (children) ->
-        Printf.sprintf "<%s%s>%s</%s>"
+        Printf.sprintf "%*s<%s%s>\n%s\n%*s</%s>"
+          i ""
           node_type
           attr_string
-          (String.concat "\n" (List.map pretty_print children))
+          (String.concat "\n" (List.map (pretty_print ~indent:(i+1)) children))
+          i ""
           node_type
-      | None -> Printf.sprintf "<%s%s/>" node_type attr_string
+      | None -> Printf.sprintf "%*s<%s%s/>" i "" node_type attr_string
 
   let node_type : t -> string =
     fun (Node (x, (module M))) -> M.node_type x
