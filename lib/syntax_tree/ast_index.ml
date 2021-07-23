@@ -1,97 +1,10 @@
-module NodeInterface = struct
-  module type S = sig
-    type elt
-    type child_elt
-
-    val node_type : elt -> string
-    val location : elt -> Location.t
-    val children : elt -> child_elt list option
-    val attributes : elt -> (string * string) list
-  end
-
-  type t =
-    | Node : 'a * (module S with type elt = 'a and type child_elt = t) -> t
-
-  module type T = sig
-    type node := t
-    type t
-
-    val node_type : t -> string
-    val location : t -> Location.t
-    val children : t -> node list option
-    val attributes : t -> (string * string) list
-  end
-
-  module Make (X : T) : S with type child_elt = t and type elt = X.t =
-  struct
-    type elt = X.t
-    type child_elt = t
-
-    include X
-  end
-
-  (* Helper methods *)
-
-  let rec pretty_print : ?indent:int -> t -> string =
-    fun ?indent:(i=0) (Node (x, (module M))) ->
-      let node_type = M.node_type x in
-      let attributes = M.attributes x in
-      let attr_string = match attributes with
-      | [] -> ""
-      | attrs -> let vals = String.concat " "
-        (List.map (fun (k,v) -> Printf.sprintf "%s=\"%s\"" k v) attrs) in
-        " " ^ vals ^ " " in
-      match M.children x with
-      | Some (children) ->
-        Printf.sprintf "%*s<%s%s>\n%s\n%*s</%s>"
-          i ""
-          node_type
-          attr_string
-          (String.concat "\n" (List.map (pretty_print ~indent:(i+1)) children))
-          i ""
-          node_type
-      | None -> Printf.sprintf "%*s<%s%s/>" i "" node_type attr_string
-
-  let node_type : t -> string =
-    fun (Node (x, (module M))) -> M.node_type x
-
-  let location : t -> Location.t =
-    fun (Node (x, (module M))) -> M.location x
-
-  let attributes : t -> (string * string) list =
-    fun (Node (x, (module M))) -> M.attributes x
-
-  let children : t -> t list option =
-    fun (Node (x, (module M))) -> M.children x
-end
-
-module Query = struct
-  let rec lazy_query ~f all =
-    List.to_seq all
-    |> Seq.flat_map (fun x ->
-      match NodeInterface.children x with
-      | Some (children) -> Seq.cons x (lazy_query ~f children)
-      | None -> Seq.return x
-    )
-    |> Seq.filter f
-
-  let query_all ~f all =
-    List.of_seq @@ lazy_query ~f:f all
-
-  let query ~f all =
-    let result = lazy_query ~f:f all in
-    match result () with
-    | Cons (x, _) -> Some x
-    | Nil -> None
-end
-
 module ValueNode = struct
   type data = {
     value : Location.t Ast.value;
     location : Location.t;
   }
 
-  module I = NodeInterface.Make(struct
+  module I = Node.Make(struct
     type t = data
     let node_type _ = "ValueNode"
     let location t = t.location
@@ -103,7 +16,7 @@ module ValueNode = struct
   end)
 
   let make value location =
-    NodeInterface.Node ({ value; location }, (module I))
+    Node.Node ({ value; location }, (module I))
 end
 
 module RefNode = struct
@@ -113,7 +26,7 @@ module RefNode = struct
     (* scope : string list; *)
   }
 
-  module I = NodeInterface.Make(struct
+  module I = Node.Make(struct
     type t = data
     let node_type _ = "RefNode"
     let location t = t.location
@@ -124,7 +37,7 @@ module RefNode = struct
   end)
 
   let from_data t =
-    NodeInterface.Node (t, (module I))
+    Node.Node (t, (module I))
 
   let make name location =
     from_data { name; location }
@@ -132,13 +45,13 @@ end
 
 module CallNode = struct
   type data = {
-    receiver : NodeInterface.t option;
+    receiver : Node.t option;
     method_name : string;
-    args : (NodeInterface.t list * NodeInterface.t option); (* positional args, block *)
+    args : (Node.t list * Node.t option); (* positional args, block *)
     location : Location.t;
   }
 
-  module I = NodeInterface.Make(struct
+  module I = Node.Make(struct
     type t = data
     let node_type _ = "CallNode"
     let location t = t.location
@@ -149,7 +62,7 @@ module CallNode = struct
   end)
 
   let make receiver method_name args location =
-    NodeInterface.Node ({ receiver; method_name; args; location }, (module I))
+    Node.Node ({ receiver; method_name; args; location }, (module I))
 end
 
 module MethodNode = struct
@@ -157,10 +70,10 @@ module MethodNode = struct
     name : string;
     args : Location.t Ast.id list;
     location : Location.t;
-    children : NodeInterface.t list;
+    children : Node.t list;
   }
 
-  module I = NodeInterface.Make(struct
+  module I = Node.Make(struct
     type t = data
     let node_type _ = "MethodNode"
     let location t = t.location
@@ -171,16 +84,17 @@ module MethodNode = struct
   end)
 
   let make name args location children =
-    NodeInterface.Node ({ name; args; location; children }, (module I))
+    Node.Node ({ name; args; location; children }, (module I))
 end
 
 module ScopingNode = struct
   type data = {
     location : Location.t;
-    children : NodeInterface.t list;
+    children : Node.t list;
+    scope_type : string;
   }
 
-  module I = NodeInterface.Make(struct
+  module I = Node.Make(struct
     type t = data
 
     let node_type _ = "ScopingNode"
@@ -193,19 +107,19 @@ module ScopingNode = struct
   end)
 
   let from_data t =
-    NodeInterface.Node (t, (module I))
+    Node.Node (t, (module I))
 
-  let make location children =
-    NodeInterface.Node ({ location; children }, (module I))
+  let make location children scope_type =
+    Node.Node ({ location; children; scope_type }, (module I))
 end
 
 module AssignmentNode = struct
   type data = {
     target : RefNode.data;
-    children : NodeInterface.t list
+    children : Node.t list
   }
 
-  module I = NodeInterface.Make(struct
+  module I = Node.Make(struct
     type t = data
 
     let node_type _t = "AssignmentNode"
@@ -218,12 +132,12 @@ module AssignmentNode = struct
   end)
 
   let make target children =
-    NodeInterface.Node ({ target; children }, (module I))
+    Node.Node ({ target; children }, (module I))
 end
 
 let create ast =
   let rec traverse
-    (acc : NodeInterface.t list)
+    (acc : Node.t list)
     (expression : Location.t Ast.expression) =
     let (expr, location) = expression in
     match expr with
@@ -250,7 +164,7 @@ let create ast =
       let children1 = (traverse [] expr1) in
       let children2 = (traverse [] expr2) in
       let children = List.rev_append children1 children2 in
-      let node = (ScopingNode.make location children) in
+      let node = (ScopingNode.make location children "Block") in
       node :: acc
     (* MethodNode *)
     | ExprFunc (name, args, expr') ->
@@ -291,4 +205,4 @@ let create ast =
 
 let () = nodes
 |> Query.query_all ~f:(fun _node -> true) 
-|> List.iter (fun node -> print_endline @@ NodeInterface.pretty_print node)  *)
+|> List.iter (fun node -> print_endline @@ Node.pretty_print node)  *)
