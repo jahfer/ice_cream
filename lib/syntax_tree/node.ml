@@ -45,6 +45,7 @@ let children : t -> t list option =
 
 let rec pretty_print : ?indent:int -> t -> string =
   fun ?indent:(i=0) (Node (x, (module M))) ->
+    let j = i * 2 in
     let node_type = M.node_type x in
     let attributes = M.attributes x in
     let attr_string = match attributes with
@@ -55,10 +56,10 @@ let rec pretty_print : ?indent:int -> t -> string =
     match M.children x with
     | Some (children) ->
       Printf.sprintf "%*s<%s%s>\n%s\n%*s</%s>"
-        i ""
+        j ""
         node_type
         attr_string
         (String.concat "\n" (List.map (pretty_print ~indent:(i+1)) children))
-        i ""
+        j ""
         node_type
-    | None -> Printf.sprintf "%*s<%s%s/>" i "" node_type attr_string
+    | None -> Printf.sprintf "%*s<%s%s/>" j "" node_type attr_string
