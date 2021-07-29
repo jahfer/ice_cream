@@ -205,88 +205,201 @@ end
         ()))
 ```
 
-#### Indexed Data
+#### Index Querying
+
+**OCaml Script**
+
+```ocaml
+let index = Ast_index.create ast in
+  index
+  |> Query.query_all ~f:(fun node ->
+    (Node.node_type node) = "AssignmentNode"
+  )
+  |> List.iter (fun node ->
+    print_endline @@ Location.loc_as_string (Node.location node);
+    print_endline @@ Node.pretty_print node
+  );
 ```
-CONST ASSIGNMENTS
 
-Definition of ::ChatApp::VERSION
+**Output**
+```xml
      ...
-     2|   VERSION = "1.0.0"
-      |   ^^^^^^^
+     8| params = {
+      | ^^^^^^
 
-Definition of ::ChatApp::User
+<AssignmentNode>
+  <RefNode name="params" />
+  <ValueNode type="Hash" value="{ key: true, another: value }" />
+</AssignmentNode>
      ...
-     4|   class User
-      |   ^^^^^^^^^^
+    13| @x = :my_symbol
+      | ^^
 
-Definition of ::ChatApp::Bot
+<AssignmentNode>
+  <RefNode name="@x" />
+  <ValueNode type="Symbol" value=":my_symbol" />
+</AssignmentNode>
      ...
-    11|   class Bot
-      |   ^^^^^^^^^
+    16| FooBar = 151.56
+      | ^^^^^^
 
-Definition of ::ChatApp::Message
+<AssignmentNode>
+  <RefNode name="FooBar" />
+  <ValueNode type="Float" value="151.560000" />
+</AssignmentNode>
      ...
-    19|   class Message
-      |   ^^^^^^^^^^^^^
+    21| stmt1 = 3; stmt2 = 1
+      | ^^^^^
 
-Definition of ::ChatApp::Channel
+<AssignmentNode>
+  <RefNode name="stmt1" />
+  <ValueNode type="Integer" value="3" />
+</AssignmentNode>
      ...
-    36|   class Channel
-      |   ^^^^^^^^^^^^^
+    21| stmt1 = 3; stmt2 = 1
+      |            ^^^^^
 
-Definition of ::ChatApp
+<AssignmentNode>
+  <RefNode name="stmt2" />
+  <ValueNode type="Integer" value="1" />
+</AssignmentNode>
      ...
-     1| module ChatApp
-      | ^^^^^^^^^^^^^^
+    37| y = [1,2,3]
+      | ^
 
-LOCAL VARIABLE ASSIGNMENTS
-
-Scope: ::ChatApp::Message
+<AssignmentNode>
+  <RefNode name="y" />
+  <ValueNode type="Array" value="[1 2 3]" />
+</AssignmentNode>
      ...
-    31|       m = Message.new
-      |       ^
+    39| n = y[0]
+      | ^
 
-INSTANCE VARIABLE ASSIGNMENTS
-
-Scope: ::ChatApp::Message
+<AssignmentNode>
+  <RefNode name="n" />
+  <CallNode method="[]" >
+    <ValueNode type="Integer" value="0" />
+  </CallNode>
+</AssignmentNode>
      ...
-    26|       @from = from
-      |       ^^^^^
+    40| z = y.first
+      | ^
 
-Scope: ::ChatApp::Message
+<AssignmentNode>
+  <RefNode name="z" />
+  <CallNode method="first" >
+
+  </CallNode>
+</AssignmentNode>
      ...
-    27|       @string = string
-      |       ^^^^^^^
+    42| func1 = -> { x = 45 }
+      | ^^^^^
 
-FUNCTION DEFINITIONS
-
-Scope: ::ChatApp::User
+<AssignmentNode>
+  <RefNode name="func1" />
+</AssignmentNode>
      ...
-     8|     def initialize(login, email); end
-      |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    43| func2 = -> (local) { }
+      | ^^^^^
 
-Scope: ::ChatApp::Bot
+<AssignmentNode>
+  <RefNode name="func2" />
+</AssignmentNode>
      ...
-    16|     def initialize(name, owner); end
-      |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    44| func3 = -> (local, _x) {
+      | ^^^^^
 
-Scope: ::ChatApp::Message
+<AssignmentNode>
+  <RefNode name="func3" />
+</AssignmentNode>
      ...
-    25|     def initialize(from, string)
-      |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    49| b = 3
+      | ^
 
-Scope: ::ChatApp::Message
+<AssignmentNode>
+  <RefNode name="b" />
+  <ValueNode type="Integer" value="3" />
+</AssignmentNode>
      ...
-    30|     def reply(from, string)
-      |     ^^^^^^^^^^^^^^^^^^^^^^^
+    50| a = b
+      | ^
 
-Scope: ::ChatApp::Channel
+<AssignmentNode>
+  <RefNode name="a" />
+  <RefNode name="b" />
+</AssignmentNode>
      ...
-    42|     def initialize(name); end
-      |     ^^^^^^^^^^^^^^^^^^^^
+    60| class Foo; end
+      |       ^^^
 
-Scope: ::ChatApp::Channel
+<AssignmentNode>
+  <RefNode name="Foo" />
+</AssignmentNode>
      ...
-    43|     def each_member; end
-      |     ^^^^^^^^^^^^^^^
+    61| class Bar < Foo; end
+      |       ^^^
+
+<AssignmentNode>
+  <RefNode name="Bar" />
+</AssignmentNode>
+     ...
+    63| module Foo::Bar::Baz; end
+      |        ^^^^^^^^^^^^^
+
+<AssignmentNode>
+  <RefNode name="Baz" />
+</AssignmentNode>
+     ...
+    65| module M1
+      |        ^^
+
+<AssignmentNode>
+  <RefNode name="M1" />
+  <ScopingNode>
+    <AssignmentNode>
+      <RefNode name="M2" />
+      <ScopingNode>
+        <MethodNode name="sum1" />
+      </ScopingNode>
+    </AssignmentNode>
+  </ScopingNode>
+</AssignmentNode>
+     ...
+    66|   class M2
+      |         ^^
+
+<AssignmentNode>
+  <RefNode name="M2" />
+  <ScopingNode>
+    <MethodNode name="sum1" />
+  </ScopingNode>
+</AssignmentNode>
+     ...
+    73| class Foo::Bar
+      |       ^^^^^^^^
+
+<AssignmentNode>
+  <RefNode name="Bar" />
+  <ScopingNode>
+    <MethodNode name="sum1" />
+    <ScopingNode>
+      <AssignmentNode>
+        <RefNode name="<<EIGENCLASS>>" />
+        <ScopingNode>
+          <MethodNode name="thing" />
+        </ScopingNode>
+      </AssignmentNode>
+    </ScopingNode>
+  </ScopingNode>
+</AssignmentNode>
+     ...
+    78|   class << self
+      |   ^^^
+
+<AssignmentNode>
+  <RefNode name="<<EIGENCLASS>>" />
+  <ScopingNode>
+    <MethodNode name="thing" />
+  </ScopingNode>
+</AssignmentNode>
 ```

@@ -6,6 +6,7 @@ module type S = sig
   val location : elt -> Location.t
   val children : elt -> child_elt list option
   val attributes : elt -> (string * string) list
+  val parent : elt -> child_elt option
 end
 
 type t =
@@ -19,6 +20,7 @@ module type NodeIntf = sig
   val location : t -> Location.t
   val children : t -> node list option
   val attributes : t -> (string * string) list
+  val parent : t -> node option
 end
 
 module Make (X : NodeIntf) : S with type child_elt = t and type elt = X.t =
@@ -42,6 +44,9 @@ let attributes : t -> (string * string) list =
 
 let children : t -> t list option =
   fun (Node (x, (module M))) -> M.children x
+
+let parent : t -> t option =
+  fun (Node (x, (module M))) -> M.parent x
 
 let rec pretty_print : ?indent:int -> t -> string =
   fun ?indent:(i=0) (Node (x, (module M))) ->

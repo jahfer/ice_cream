@@ -9,6 +9,7 @@ module ValueNode = struct
     let node_type _ = "ValueNode"
     let location t = t.location
     let children _ = None
+    let parent _ = None
     let attributes t = [
       ("type", Ast.AstPrinter.print_value_type t.value);
       ("value", Ast.AstPrinter.print_value t.value)
@@ -31,6 +32,7 @@ module RefNode = struct
     let node_type _ = "RefNode"
     let location t = t.location
     let children _ = None
+    let parent _ = None
     let attributes t = [
       ("name", t.name)
     ]
@@ -53,11 +55,15 @@ module CallNode = struct
 
   module I = Node.Make(struct
     type t = data
+
+    let positional_args (p, _) = p
+
     let node_type _ = "CallNode"
     let location t = t.location
-    let children _ = None
+    let children t = Some (positional_args t.args)
+    let parent _ = None
     let attributes t = [
-      ("method", t.method_name)
+      ("method", t.method_name);
     ]
   end)
 
@@ -78,6 +84,7 @@ module MethodNode = struct
     let node_type _ = "MethodNode"
     let location t = t.location
     let children _ = None
+    let parent _ = None
     let attributes t = [
       ("name", t.name)
     ]
@@ -96,13 +103,10 @@ module ScopingNode = struct
 
   module I = Node.Make(struct
     type t = data
-
     let node_type _ = "ScopingNode"
-
     let location t = t.location
-
     let children t = Some(t.children)
-
+    let parent _ = None
     let attributes _ = []
   end)
 
@@ -121,13 +125,10 @@ module AssignmentNode = struct
 
   module I = Node.Make(struct
     type t = data
-
     let node_type _t = "AssignmentNode"
-
     let location t = t.target.location
-
     let children t = Some ((RefNode.from_data t.target) :: t.children)
-
+    let parent _ = None
     let attributes _t = []
   end)
 
@@ -146,8 +147,7 @@ let create ast =
     | ExprIVarAssign (name, expr') ->
       let children = (traverse [] expr') in
       let node = (AssignmentNode.make { name; location } children) in
-      let acc' = node :: acc in
-      (traverse[@tailcall]) acc' expr'
+      node :: acc
     | ExprConstAssign ((ExprConst ((name, _t), _nesting), location'), expr') ->
       let children = (traverse [] expr') in
       let node = (AssignmentNode.make { name; location = location' } children) in
@@ -159,7 +159,7 @@ let create ast =
     (* ScopingNode *)
     | ExprModuleBody expr'
     | ExprClassBody expr' ->
-      traverse acc expr'
+      (traverse[@tailcall]) acc expr'
     | ExprBlock (expr1, expr2) -> 
       let children1 = (traverse [] expr1) in
       let children2 = (traverse [] expr2) in
@@ -189,7 +189,9 @@ let create ast =
     | ExprValue (v) ->
       let node = ValueNode.make v location in
       node :: acc
-    | ExprConst _ -> acc (* TODO *)
+    | ExprConst ((name, _t), _nesting) ->
+      let node = RefNode.make name location in
+      node :: acc
     | ExprLambda _ -> acc (* TODO *)
     | ExprProc _ -> acc (* TODO *)
     (* Unreachable *)
@@ -197,12 +199,3 @@ let create ast =
     (* Skip over *)
     | ExprEmptyBlock -> acc
     in List.fold_left traverse [] ast
-
-(* let nodes = [
-  AssignmentNode.make ("a", Ast.Nil) [];
-  RefNode.make "a";
-]
-
-let () = nodes
-|> Query.query_all ~f:(fun _node -> true) 
-|> List.iter (fun node -> print_endline @@ Node.pretty_print node)  *)
