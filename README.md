@@ -231,6 +231,8 @@ let index = Ast_index.create ast in
   <RefNode name="params" />
   <ValueNode type="Hash" value="{ key: true, another: value }" />
 </AssignmentNode>
+
+==========================
      ...
     13| @x = :my_symbol
       | ^^
@@ -239,6 +241,8 @@ let index = Ast_index.create ast in
   <RefNode name="@x" />
   <ValueNode type="Symbol" value=":my_symbol" />
 </AssignmentNode>
+
+==========================
      ...
     16| FooBar = 151.56
       | ^^^^^^
@@ -247,6 +251,8 @@ let index = Ast_index.create ast in
   <RefNode name="FooBar" />
   <ValueNode type="Float" value="151.560000" />
 </AssignmentNode>
+
+==========================
      ...
     21| stmt1 = 3; stmt2 = 1
       | ^^^^^
@@ -255,6 +261,8 @@ let index = Ast_index.create ast in
   <RefNode name="stmt1" />
   <ValueNode type="Integer" value="3" />
 </AssignmentNode>
+
+==========================
      ...
     21| stmt1 = 3; stmt2 = 1
       |            ^^^^^
@@ -263,6 +271,8 @@ let index = Ast_index.create ast in
   <RefNode name="stmt2" />
   <ValueNode type="Integer" value="1" />
 </AssignmentNode>
+
+==========================
      ...
     37| y = [1,2,3]
       | ^
@@ -271,6 +281,8 @@ let index = Ast_index.create ast in
   <RefNode name="y" />
   <ValueNode type="Array" value="[1 2 3]" />
 </AssignmentNode>
+
+==========================
      ...
     39| n = y[0]
       | ^
@@ -281,6 +293,8 @@ let index = Ast_index.create ast in
     <ValueNode type="Integer" value="0" />
   </CallNode>
 </AssignmentNode>
+
+==========================
      ...
     40| z = y.first
       | ^
@@ -291,6 +305,8 @@ let index = Ast_index.create ast in
 
   </CallNode>
 </AssignmentNode>
+
+==========================
      ...
     42| func1 = -> { x = 45 }
       | ^^^^^
@@ -298,6 +314,8 @@ let index = Ast_index.create ast in
 <AssignmentNode>
   <RefNode name="func1" />
 </AssignmentNode>
+
+==========================
      ...
     43| func2 = -> (local) { }
       | ^^^^^
@@ -305,6 +323,8 @@ let index = Ast_index.create ast in
 <AssignmentNode>
   <RefNode name="func2" />
 </AssignmentNode>
+
+==========================
      ...
     44| func3 = -> (local, _x) {
       | ^^^^^
@@ -312,6 +332,8 @@ let index = Ast_index.create ast in
 <AssignmentNode>
   <RefNode name="func3" />
 </AssignmentNode>
+
+==========================
      ...
     49| b = 3
       | ^
@@ -320,6 +342,8 @@ let index = Ast_index.create ast in
   <RefNode name="b" />
   <ValueNode type="Integer" value="3" />
 </AssignmentNode>
+
+==========================
      ...
     50| a = b
       | ^
@@ -328,6 +352,8 @@ let index = Ast_index.create ast in
   <RefNode name="a" />
   <RefNode name="b" />
 </AssignmentNode>
+
+==========================
      ...
     60| class Foo; end
       |       ^^^
@@ -335,6 +361,8 @@ let index = Ast_index.create ast in
 <AssignmentNode>
   <RefNode name="Foo" />
 </AssignmentNode>
+
+==========================
      ...
     61| class Bar < Foo; end
       |       ^^^
@@ -342,6 +370,8 @@ let index = Ast_index.create ast in
 <AssignmentNode>
   <RefNode name="Bar" />
 </AssignmentNode>
+
+==========================
      ...
     63| module Foo::Bar::Baz; end
       |        ^^^^^^^^^^^^^
@@ -349,6 +379,8 @@ let index = Ast_index.create ast in
 <AssignmentNode>
   <RefNode name="Baz" />
 </AssignmentNode>
+
+==========================
      ...
     65| module M1
       |        ^^
@@ -364,6 +396,8 @@ let index = Ast_index.create ast in
     </AssignmentNode>
   </ScopingNode>
 </AssignmentNode>
+
+==========================
      ...
     66|   class M2
       |         ^^
@@ -374,6 +408,8 @@ let index = Ast_index.create ast in
     <MethodNode name="sum1" />
   </ScopingNode>
 </AssignmentNode>
+
+==========================
      ...
     73| class Foo::Bar
       |       ^^^^^^^^
@@ -392,6 +428,8 @@ let index = Ast_index.create ast in
     </ScopingNode>
   </ScopingNode>
 </AssignmentNode>
+
+==========================
      ...
     78|   class << self
       |   ^^^
@@ -402,4 +440,6 @@ let index = Ast_index.create ast in
     <MethodNode name="thing" />
   </ScopingNode>
 </AssignmentNode>
+
+==========================
 ```
