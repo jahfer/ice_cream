@@ -5,7 +5,7 @@ build:
 	dune build bin/cli.$(FORMAT)
 
 run:
-	dune exec bin/cli.$(FORMAT) $(FILE)
+	OCAMLRUNPARAM=b dune exec bin/cli.$(FORMAT) $(FILE)
 
 test:
 	dune runtest
