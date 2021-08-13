@@ -58,8 +58,10 @@ let parse_from_filename filename =
     (Node.node_type node) = "RefNode"
   )
   |> List.iter (fun node ->
+    print_endline @@ Node.to_rbs node;
+    print_endline @@ Location.loc_as_string (Node.location node);
     print_endline @@ Node.pretty_print node;
-    (* print_endline @@ Location.loc_as_string (Node.location node) *)
+    print_endline "\n==========================";
   );
   
   (* let scope_as_string (scope) = 

@@ -8,6 +8,7 @@ type 'a value =
   | Symbol of string
   | Nil
   | Any
+  | Lambda of 'a id list * 'a expression (* args, body *)
 
 and 'a id = string * 'a value
 
@@ -18,8 +19,6 @@ and 'a call_args = 'a expression list * 'a expression option (* positional args,
 and 'a expr =
   | ExprCall of 'a expression * string * 'a call_args (* receiver, method, args *)
   | ExprFunc of string * 'a id list * 'a expression (* name, args, body *)
-  | ExprLambda of 'a id list * 'a expression (* args, body *)
-  | ExprProc of 'a id list * 'a expression (* args, body *)
   | ExprValue of 'a value
   | ExprVar of 'a id
   | ExprConst of 'a id * 'a nesting
@@ -31,6 +30,9 @@ and 'a expr =
   | ExprClassBody of 'a expression
   | ExprModuleBody of 'a expression
   | ExprEmptyBlock
+  (* TODO: Remove these *)
+  | ExprLambda of 'a id list * 'a expression (* args, body *)
+  | ExprProc of 'a id list * 'a expression (* args, body *)
 
 and 'a expression = 'a expr * 'a
 
@@ -111,16 +113,17 @@ module AstPrinter = struct
       Printf.sprintf "()"
 
   and print_value = function
-    | Hash obj     -> print_hash obj
-    | Array l      -> Printf.sprintf "[%s]" (print_list print_cexpr l)
-    | String s     -> Printf.sprintf "%s" s
-    | Symbol s     -> Printf.sprintf ":%s" s
-    | Int i        -> Printf.sprintf "%d" i
-    | Float x      -> Printf.sprintf "%f" x
-    | Bool true    -> Printf.sprintf "true"
-    | Bool false   -> Printf.sprintf "false"
-    | Nil          -> Printf.sprintf "nil"
-    | Any          -> Printf.sprintf "?"
+    | Hash obj   -> print_hash obj
+    | Array l    -> Printf.sprintf "[%s]" (print_list print_cexpr l)
+    | String s   -> Printf.sprintf "%s" s
+    | Symbol s   -> Printf.sprintf ":%s" s
+    | Int i      -> Printf.sprintf "%d" i
+    | Float x    -> Printf.sprintf "%f" x
+    | Bool true  -> Printf.sprintf "true"
+    | Bool false -> Printf.sprintf "false"
+    | Nil        -> Printf.sprintf "nil"
+    | Any        -> Printf.sprintf "?"
+    | Lambda _   -> Printf.sprintf "-> (...) { ... }"
 
   and print_value_type = function
   | Hash _     -> "Hash"
@@ -133,7 +136,7 @@ module AstPrinter = struct
   | Bool false -> "FalseClass"
   | Nil        -> "NilClass"
   | Any        -> "?"
-
+  | Lambda _   -> "Lambda"
 
   and print_params arr =
     let buf = Buffer.create 256 in
@@ -172,194 +175,3 @@ module AstPrinter = struct
         Printf.bprintf buf "%s" name) lst;
     Buffer.contents buf
 end
-
-(* module Index : sig
-  type type_key =
-  | KAssign
-  | KIVarAssign
-  | KConstAssign
-  | KFunc
-
-  type const = Root | Const of string
-  type scope = const list 
-
-  module Node : sig
-    type t = {
-      id : int;
-      ident : string;
-      expr : Location.t expr;
-      location : Location.t;
-      parent : t option ref;
-      scope : scope;
-    }
-    
-    val create : Location.t expression -> scope -> string -> t
-
-    val compare : t -> t -> int
-
-    module Reader : sig
-      val read : t -> string
-    end
-  end
-
-  module NodeSet : Set.S with type elt = Node.t
-
-  type node_list_t = (type_key * NodeSet.t ref) list
-  type range = { pos_beg: int; pos_end: int }
-  type context = {
-    nesting : const list;
-    node_list : node_list_t;
-  }
-
-  val create : (Location.t expression list) -> context
-
-end = struct
-
-  type const = Root | Const of string
-  type scope = const list
-
-  type type_key =
-  | KAssign
-  | KIVarAssign
-  | KConstAssign
-  | KFunc
-
-  module Node = struct
-    (* 
-      TODO: define cross-file "scopes" based on module definitions.
-      Browse defined variables by given scope (within file and across)
-    *)
-
-    type t = {
-      id : int;
-      ident : string;
-      expr : Location.t expr;
-      location : Location.t;
-      parent : t option ref;
-      scope : scope;
-    }
-
-    let create (input : Location.t expression) (scope : scope) (ident : string)= 
-      let (expr, location) = input in {
-        id = location.id;
-        ident;
-        expr;
-        location;
-        parent = ref None;
-        scope;
-      }
-
-    let compare (a : t) (b : t) = 
-      Stdlib.compare a.id b.id
-
-    module Reader = struct
-      let scope_as_string (scope) = 
-        scope
-        |> List.rev_map (fun x -> match x with Root -> "" | Const x -> x)
-        |> String.concat "::"
-
-      let read (node : t) = 
-        let scope_str = scope_as_string node.scope in
-        let title = match node.expr with
-        | ExprConstAssign ((ExprConst ((name, _), _), _), _) ->
-          let name = String.concat "::" [scope_str; name] in
-          Printf.sprintf "\nDefinition of %s" name
-        | _ -> raise (Failure "oops") in
-        Printf.sprintf "%s\n%s" title (Location.loc_as_string node.location)
-    end
-  end
-
-  module NodeSet = Set.Make(Node)
-
-  type node_list_t = (type_key * NodeSet.t ref) list
-  type range = { pos_beg: int; pos_end: int }
-  type context = {
-    nesting : scope;
-    node_list : node_list_t;
-  }
-
-  let node_list_default () : node_list_t = [
-    (KAssign, ref NodeSet.empty);
-    (KIVarAssign, ref NodeSet.empty);
-    (KConstAssign, ref NodeSet.empty);
-    (KFunc, ref NodeSet.empty);
-  ]
-
-  let context_default () : context = {
-    nesting = [Root];
-    node_list = node_list_default ();
-  }
-
-  let create (ast) = 
-    let rec traverse
-      (context : context)
-      (expression : Location.t expression) =
-
-      let (expr, _loc) = expression in
-      match expr with
-
-      | ExprConstAssign ((ExprConst ((name, _t), nesting), _loc), e) -> (
-        let original_nesting = context.nesting in
-        let ys = List.map (fun (x, _) -> (Const x)) nesting in
-        let n = List.append ys context.nesting in
-
-        let list = List.assoc KConstAssign context.node_list in
-        list := NodeSet.add (Node.create expression n name) !list;
-
-        let c = { context with nesting = (Const name) :: n } in
-        let c' = traverse c e in
-        { c' with nesting = original_nesting }
-      )
-
-      | ExprBlock (e1, e2) ->
-        let c' = traverse context e1 in
-        traverse c' e2
-
-      | ExprClassBody e | ExprModuleBody e -> traverse context e
-
-      | ExprAssign (name, e) ->
-        let list = List.assoc KAssign context.node_list in
-        list := NodeSet.add (Node.create expression context.nesting name) !list;
-        traverse context e
-
-      | ExprIVarAssign (name, e) ->
-        let list = List.assoc KIVarAssign context.node_list in
-        list := NodeSet.add (Node.create expression context.nesting name) !list;
-        traverse context e
-
-      | ExprFunc (name, _, e) ->
-        let list = List.assoc KFunc context.node_list in
-        list := NodeSet.add (Node.create expression context.nesting name) !list;
-        traverse context e
-        
-      (* others *)
-      | ExprCall _
-      | ExprLambda _
-      | ExprProc _
-      | ExprValue _
-      | ExprVar _
-      | ExprConst _
-      | ExprIVar _
-      | ExprConstAssign _
-      | ExprEmptyBlock -> context
-      in List.fold_left traverse (context_default ()) ast
-
-    (* 
-    - Const assignment
-    - Var assignment
-    - Instance var assignment
-    - Function definition
-
-    - Object interfaces (public methods)
-
-    - Function calls
-    - Const reference
-     *)
-end *)
-
-(* let nodes = [
-  (ExprTypeA, [ExprA 0; ExprA 3]);
-  (ExprTypeB, [ExprB 1]);
-  (ExprTypeC, [ExprC 2; ExprC 4]);
-  (ExprTypeD, [ExprD 3])
-] *)

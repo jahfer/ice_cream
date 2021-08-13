@@ -7,6 +7,7 @@ module type S = sig
   val children : elt -> child_elt list option
   val attributes : elt -> (string * string) list
   val parent : elt -> child_elt option
+  val to_rbs : elt -> string
 end
 
 type t =
@@ -21,6 +22,7 @@ module type NodeIntf = sig
   val children : t -> node list option
   val attributes : t -> (string * string) list
   val parent : t -> node option
+  val to_rbs : t -> string
 end
 
 module Make (X : NodeIntf) : S with type child_elt = t and type elt = X.t =
@@ -45,20 +47,25 @@ let attributes : t -> (string * string) list =
 let children : t -> t list option =
   fun (Node (x, (module M))) -> M.children x
 
+let to_rbs : t -> string =
+  fun (Node (x, (module M))) -> M.to_rbs x
+
+(* Nodes can't assign parent to children when
+   children are required to define parent! *)
 let parent : t -> t option =
   fun (Node (x, (module M))) -> M.parent x
 
 let rec pretty_print : ?indent:int -> t -> string =
-  fun ?indent:(i=0) (Node (x, (module M))) ->
+  fun ?indent:(i=0) (Node (node, (module M))) ->
     let j = i * 2 in
-    let node_type = M.node_type x in
-    let attributes = M.attributes x in
+    let node_type = M.node_type node in
+    let attributes = M.attributes node in
     let attr_string = match attributes with
     | [] -> ""
     | attrs -> let vals = String.concat " "
       (List.map (fun (k,v) -> Printf.sprintf "%s=\"%s\"" k v) attrs) in
-      " " ^ vals ^ " " in
-    match M.children x with
+      " " ^ vals in
+    match M.children node with
     | Some (children) ->
       Printf.sprintf "%*s<%s%s>\n%s\n%*s</%s>"
         j ""
@@ -67,4 +74,4 @@ let rec pretty_print : ?indent:int -> t -> string =
         (String.concat "\n" (List.map (pretty_print ~indent:(i+1)) children))
         j ""
         node_type
-    | None -> Printf.sprintf "%*s<%s%s/>" j "" node_type attr_string
+    | None -> Printf.sprintf "%*s<%s%s />" j "" node_type attr_string

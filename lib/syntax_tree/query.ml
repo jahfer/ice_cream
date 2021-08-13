@@ -1,17 +1,20 @@
-let rec lazy_query ~f all =
-  List.to_seq all
-  |> Seq.flat_map (fun x ->
-    match Node.children x with
-    | Some (children) -> Seq.cons x (lazy_query ~f children)
-    | None -> Seq.return x
-  )
-  |> Seq.filter f
+let rec lazy_query ~f ~flatten all =
+  let s = List.to_seq all in
 
-let query_all ~f all =
-  List.of_seq @@ lazy_query ~f:f all
+  if flatten then
+    Seq.filter f @@ Seq.flat_map (fun x ->
+      match Node.children x with
+      | Some (children) -> Seq.cons x (lazy_query ~f ~flatten children)
+      | None -> Seq.return x
+    ) s
+  else Seq.filter f s
 
-let query ~f all =
-  let result = lazy_query ~f:f all in
+
+let query_all ~f ?flatten:(flatten=false) all =
+  List.of_seq @@ lazy_query ~f ~flatten all
+
+let query ~f ?flatten:(flatten=false) all =
+  let result = lazy_query ~f ~flatten all in
   match result () with
   | Cons (x, _) -> Some x
   | Nil -> None

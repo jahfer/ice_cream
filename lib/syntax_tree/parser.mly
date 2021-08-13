@@ -245,10 +245,12 @@ primitive:
 
 lambda:
   | body = lambda_body {
-    ExprLambda ([], body) |> loc_annot $sloc
+    let lambda = Lambda ([], body) in
+    ExprValue(lambda) |> loc_annot $sloc
   }
   | args = fn_args body = lambda_body {
-    ExprLambda (args, body) |> loc_annot $sloc
+    let lambda = Lambda (args, body) in
+    ExprValue(lambda) |> loc_annot $sloc
   }
   ;
 

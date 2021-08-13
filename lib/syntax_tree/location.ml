@@ -10,6 +10,17 @@ let gen_id () = Oo.id (object end)
 
 let pos_column pos = pos.pos_cnum - pos.pos_bol + 1
 
+let intersects fname lnum col location =
+  match location.start_pos.pos_fname = fname with
+  | false -> false
+  | true ->
+  match location.start_pos.pos_lnum <= lnum && location.end_pos.pos_lnum >= lnum with
+  | false -> false
+  | true ->
+  match pos_column location.start_pos <= col && pos_column location.end_pos >= col with
+  | false -> false
+  | true -> true
+
 let print_position _outc pos =
   Printf.printf "%s:%i:%i" pos.pos_fname pos.pos_lnum (pos_column pos)
 
@@ -47,7 +58,6 @@ let print_loc loc =
   let width = (pos_column loc.end_pos - pos_column loc.start_pos) in
   printf "%*s%s\n" offset " " (String.make width '^')
 
-
 let loc_as_string loc =
   let buf = Buffer.create 200 in
   let open Printf in
@@ -55,6 +65,6 @@ let loc_as_string loc =
   bprintf buf "%6d| %s\n" loc.start_pos.pos_lnum (slice_at_location loc);
   bprintf buf "%6s|" " ";
   let offset = pos_column loc.start_pos in
-  let width = (pos_column loc.end_pos - pos_column loc.start_pos) in
+  let width = max 1 (pos_column loc.end_pos - pos_column loc.start_pos) in
   bprintf buf "%*s%s\n" offset " " (String.make width '^');
   Buffer.contents buf
