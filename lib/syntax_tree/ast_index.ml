@@ -82,7 +82,7 @@ end
 module MethodNode = struct
   type data = {
     name : string;
-    args : Location.t Ast.id list;
+    args : Location.t Ast.method_args;
     location : Location.t;
     children : Node.t list;
   }
@@ -97,10 +97,31 @@ module MethodNode = struct
       ("name", t.name)
     ]
 
-    let to_rbs t = Printf.sprintf "def %s: (%s) -> %s"
-      t.name
-      (String.concat ", " @@ List.map (fun _ -> "untyped") t.args)
-      "untyped"
+    let to_rbs t =
+      let print_positional = fun x ->
+        String.concat ", " @@
+          List.map (fun (s, t) ->
+            match t with
+            | Ast.Nil -> Printf.sprintf "?Any? %s" s
+            | Any -> Printf.sprintf "untyped %s" s
+            | _ -> Printf.sprintf "?%s %s" (Ast.AstPrinter.print_value_type t) s) x in
+
+      let print_kwarg = fun x ->
+        String.concat ", " @@
+          List.map (fun (s, t) ->
+            match t with
+            | Ast.Nil -> Printf.sprintf "%s?: Any?" s
+            | Any -> Printf.sprintf "%s: untyped" s
+            | _ -> Printf.sprintf "?%s: %s" s (Ast.AstPrinter.print_value_type t)) x in
+
+      let params = match List.partition_map
+        (fun (p, typ) -> match typ with | Ast.Positional -> Left p | Keyword -> Right p)
+        t.args with
+        | [], [] -> Printf.sprintf ""
+        | pos, [] -> (print_positional pos)
+        | [], kwarg ->  (print_kwarg kwarg)
+        | pos, kwarg -> Printf.sprintf "%s, %s" (print_positional pos) (print_kwarg kwarg) in
+        Printf.sprintf "def %s: (%s) -> %s" t.name params "untyped"
   end)
 
   let make name args location children =
@@ -225,7 +246,6 @@ let create ast =
     | ExprConst ((name, _t), _nesting) ->
       let node = RefNode.make name location in
       node :: acc
-    | ExprLambda _ -> acc (* TODO *)
     | ExprProc _ -> acc (* TODO *)
     (* Unreachable *)
     | ExprConstAssign _ -> raise (Failure "ConstAssign found without Const subexpr!")

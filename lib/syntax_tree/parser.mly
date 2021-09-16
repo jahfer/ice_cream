@@ -139,7 +139,7 @@ command_args:
 
 block_args:
   PIPE p = separated_list(COMMA, ID) PIPE { 
-    List.map (fun x -> (x, Any)) p
+    List.map (fun x -> ((x, Any), Ast.Positional)) p
   }
 
 iv_identifier:
@@ -148,7 +148,7 @@ iv_identifier:
 func:
   | DEF fn = ID args = fn_args? EOS? END {
     let args = match args with
-    | Some(list) -> list
+    | Some(a) -> a
     | None -> []
     in
     let body = ExprValue(Nil) |> loc_annot $sloc in
@@ -157,7 +157,7 @@ func:
   // Multi-line function
   | DEF fn = ID args = fn_args? EOS? body = nonempty_list(top_statement) END {
     let args = match args with
-    | Some(list) -> list
+    | Some(a) -> a
     | None -> []
     in
     let empty_body = ExprEmptyBlock |> loc_annot $sloc in
@@ -169,7 +169,7 @@ func:
   // Single line function
   | DEF fn = ID args = fn_args? EOS? body = statement END {
     let args = match args with
-    | Some(list) -> list
+    | Some(a) -> a
     | None -> []
     in
     let empty_body = ExprEmptyBlock |> loc_annot $sloc in
@@ -245,16 +245,14 @@ primitive:
 
 lambda:
   | body = lambda_body {
-    let lambda = Lambda ([], body) in
+    let lambda = Lambda (([]), body) in
     ExprValue(lambda) |> loc_annot $sloc
   }
   | args = fn_args body = lambda_body {
     let lambda = Lambda (args, body) in
     ExprValue(lambda) |> loc_annot $sloc
   }
-  ;
-
-lambda_body:
+  %inline lambda_body:
   // TODO: Does this need to be a list of statements?
   | LAMBEG s = statement statement_end? RBRACE {
     s
@@ -265,9 +263,18 @@ lambda_body:
   ;
 
 fn_args:
-  LPAREN p = separated_list(COMMA, ID) RPAREN {
-    List.map (fun x -> (x, Any)) p
-  } ;
+  | params = delimited(LPAREN, separated_list(COMMA, param), RPAREN) {
+    params
+  }
+  %inline param:
+  | id = ID {
+    ((id, Any), Positional)
+  }
+  | p = separated_pair(ID, EQ, primitive) { 
+    (p, Positional)
+  }
+  | p = separated_pair(ID, COLON, primitive) { (p, Keyword) }
+  ;
 
 call_args:
   // TODO: ambiguous whether block belongs to interior or exterior statement

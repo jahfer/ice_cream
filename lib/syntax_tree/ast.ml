@@ -1,3 +1,5 @@
+type arg_type = Positional | Keyword
+
 type 'a value =
   | Hash of ('a value * 'a value) list
   | Bool of bool
@@ -8,7 +10,7 @@ type 'a value =
   | Symbol of string
   | Nil
   | Any
-  | Lambda of 'a id list * 'a expression (* args, body *)
+  | Lambda of 'a method_args * 'a expression (* args, body *)
 
 and 'a id = string * 'a value
 
@@ -16,9 +18,11 @@ and 'a nesting = 'a id list
 
 and 'a call_args = 'a expression list * 'a expression option (* positional args, block *)
 
+and 'a method_args = ('a id * arg_type) list
+
 and 'a expr =
   | ExprCall of 'a expression * string * 'a call_args (* receiver, method, args *)
-  | ExprFunc of string * 'a id list * 'a expression (* name, args, body *)
+  | ExprFunc of string * 'a method_args * 'a expression (* name, args, body *)
   | ExprValue of 'a value
   | ExprVar of 'a id
   | ExprConst of 'a id * 'a nesting
@@ -31,8 +35,7 @@ and 'a expr =
   | ExprModuleBody of 'a expression
   | ExprEmptyBlock
   (* TODO: Remove these *)
-  | ExprLambda of 'a id list * 'a expression (* args, body *)
-  | ExprProc of 'a id list * 'a expression (* args, body *)
+  | ExprProc of 'a method_args * 'a expression (* args, body *)
 
 and 'a expression = 'a expr * 'a
 
@@ -41,7 +44,6 @@ let rec map_metadata fn expr meta =
   let new_expr = match expr with
     | ExprFunc (name, args, (body_expr, body_meta)) ->
       ExprFunc (name, args, swap_meta body_expr body_meta)
-    | ExprLambda (args, (body_expr, body_meta))
     | ExprProc (args, (body_expr, body_meta)) ->
       ExprProc (args, swap_meta body_expr body_meta)
     | ExprConst (name, nesting) ->
@@ -85,8 +87,6 @@ module AstPrinter = struct
         (Option.value ~default:"None" (Option.map print_cexpr block))
     | ExprFunc (name, params, body) ->
       Printf.sprintf "(def `%s %s %s)" name (print_params params) (print_cexpr body)
-    | ExprLambda (params, body) ->
-      Printf.sprintf "(lambda %s %s)" (print_params params) (print_cexpr body)
     | ExprProc (params, body) ->
       Printf.sprintf "(proc %s %s)" (print_params params) (print_cexpr body)
     | ExprVar ((name, _value))  ->
@@ -132,8 +132,8 @@ module AstPrinter = struct
   | Symbol _   -> "Symbol"
   | Int _      -> "Integer"
   | Float _    -> "Float"
-  | Bool true  -> "TrueClass"
-  | Bool false -> "FalseClass"
+  | Bool true  -> "bool"
+  | Bool false -> "bool"
   | Nil        -> "NilClass"
   | Any        -> "?"
   | Lambda _   -> "Lambda"
@@ -142,7 +142,7 @@ module AstPrinter = struct
     let buf = Buffer.create 256 in
     if List.length(arr) > 0 then (
       Buffer.add_string buf "(params";
-      List.iteri (fun _i (id, _value) ->
+      List.iteri (fun _i ((id, _value), _param_type) ->
         Buffer.add_string buf " ";
         Printf.bprintf buf "(param `%s)" id)
         arr;

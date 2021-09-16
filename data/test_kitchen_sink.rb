@@ -32,6 +32,10 @@ def sum3(thing1, thing2) end
 
 def maybe_sum(a, b, should_do_thing) end
 
+def named_args(foo: true, bar: 3) end
+def default_args(x, foo = true, bar = false) end
+def mixed_args(foo, bar = 3, baz: nil) end
+
 false
 
 y = [1,2,3]
