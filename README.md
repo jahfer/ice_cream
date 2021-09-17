@@ -213,233 +213,142 @@ end
 let index = Ast_index.create ast in
   index
   |> Query.query_all ~f:(fun node ->
-    (Node.node_type node) = "AssignmentNode"
+    (Node.node_type node) = "MethodNode"
   )
   |> List.iter (fun node ->
+    print_endline @@ "# Original code:";
     print_endline @@ Location.loc_as_string (Node.location node);
-    print_endline @@ Node.pretty_print node
+
+    print_endline @@ "# RBS:";
+    print_endline @@ Node.to_rbs node;
+
+    print_endline @@ "\n# AST node:";
+    print_endline @@ Node.pretty_print node;
+    
+    print_endline "\n==========================\n";
   );
 ```
 
 **Output**
 ```xml
+==========================
+# Original code:
      ...
-     8| params = {
-      | ^^^^^^
+    23| def sum0; false end
+      | ^^^^^^^^
 
-<AssignmentNode>
-  <RefNode name="params" />
-  <ValueNode type="Hash" value="{ key: true, another: value }" />
-</AssignmentNode>
+# RBS:
+def sum0: () -> untyped
+
+# AST node:
+<MethodNode name="sum0">
+  <ValueNode type="bool" value="false" />
+</MethodNode>
 
 ==========================
-     ...
-    13| @x = :my_symbol
-      | ^^
 
-<AssignmentNode>
-  <RefNode name="@x" />
-  <ValueNode type="Symbol" value=":my_symbol" />
-</AssignmentNode>
+# Original code:
+     ...
+    25| def sum1(); true end
+      | ^^^^^^^^^^
+
+# RBS:
+def sum1: () -> untyped
+
+# AST node:
+<MethodNode name="sum1">
+  <ValueNode type="bool" value="true" />
+</MethodNode>
 
 ==========================
-     ...
-    16| FooBar = 151.56
-      | ^^^^^^
 
-<AssignmentNode>
-  <RefNode name="FooBar" />
-  <ValueNode type="Float" value="151.560000" />
-</AssignmentNode>
+# Original code:
+     ...
+    27| def sum2(thing)
+      | ^^^^^^^^^^^^^^^
+
+# RBS:
+def sum2: (untyped thing) -> untyped
+
+# AST node:
+<MethodNode name="sum2">
+  <ValueNode type="Integer" value="45" />
+</MethodNode>
 
 ==========================
-     ...
-    21| stmt1 = 3; stmt2 = 1
-      | ^^^^^
 
-<AssignmentNode>
-  <RefNode name="stmt1" />
-  <ValueNode type="Integer" value="3" />
-</AssignmentNode>
+# Original code:
+     ...
+    31| def sum3(thing1, thing2) end
+      | ^^^^^^^^^^^^^^^^^^^^^^^^
+
+# RBS:
+def sum3: (untyped thing1, untyped thing2) -> untyped
+
+# AST node:
+<MethodNode name="sum3">
+  <ValueNode type="NilClass" value="nil" />
+</MethodNode>
 
 ==========================
-     ...
-    21| stmt1 = 3; stmt2 = 1
-      |            ^^^^^
 
-<AssignmentNode>
-  <RefNode name="stmt2" />
-  <ValueNode type="Integer" value="1" />
-</AssignmentNode>
+# Original code:
+     ...
+    33| def maybe_sum(a, b, should_do_thing) end
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+# RBS:
+def maybe_sum: (untyped a, untyped b, untyped should_do_thing) -> untyped
+
+# AST node:
+<MethodNode name="maybe_sum">
+  <ValueNode type="NilClass" value="nil" />
+</MethodNode>
 
 ==========================
-     ...
-    37| y = [1,2,3]
-      | ^
 
-<AssignmentNode>
-  <RefNode name="y" />
-  <ValueNode type="Array" value="[1 2 3]" />
-</AssignmentNode>
+# Original code:
+     ...
+    35| def named_args(foo: true, bar: 3) end
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+# RBS:
+def named_args: (?foo: bool, ?bar: Integer) -> untyped
+
+# AST node:
+<MethodNode name="named_args">
+  <ValueNode type="NilClass" value="nil" />
+</MethodNode>
 
 ==========================
-     ...
-    39| n = y[0]
-      | ^
 
-<AssignmentNode>
-  <RefNode name="n" />
-  <CallNode method="[]" >
-    <ValueNode type="Integer" value="0" />
-  </CallNode>
-</AssignmentNode>
+# Original code:
+     ...
+    36| def default_args(x, foo = true, bar = false) end
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+# RBS:
+def default_args: (untyped x, ?bool foo, ?bool bar) -> untyped
+
+# AST node:
+<MethodNode name="default_args">
+  <ValueNode type="NilClass" value="nil" />
+</MethodNode>
 
 ==========================
+
+# Original code:
      ...
-    40| z = y.first
-      | ^
+    37| def mixed_args(foo, bar = 3, baz: nil) end
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-<AssignmentNode>
-  <RefNode name="z" />
-  <CallNode method="first" >
+# RBS:
+def mixed_args: (untyped foo, ?Integer bar, baz?: Any?) -> untyped
 
-  </CallNode>
-</AssignmentNode>
-
-==========================
-     ...
-    42| func1 = -> { x = 45 }
-      | ^^^^^
-
-<AssignmentNode>
-  <RefNode name="func1" />
-</AssignmentNode>
-
-==========================
-     ...
-    43| func2 = -> (local) { }
-      | ^^^^^
-
-<AssignmentNode>
-  <RefNode name="func2" />
-</AssignmentNode>
-
-==========================
-     ...
-    44| func3 = -> (local, _x) {
-      | ^^^^^
-
-<AssignmentNode>
-  <RefNode name="func3" />
-</AssignmentNode>
-
-==========================
-     ...
-    49| b = 3
-      | ^
-
-<AssignmentNode>
-  <RefNode name="b" />
-  <ValueNode type="Integer" value="3" />
-</AssignmentNode>
-
-==========================
-     ...
-    50| a = b
-      | ^
-
-<AssignmentNode>
-  <RefNode name="a" />
-  <RefNode name="b" />
-</AssignmentNode>
-
-==========================
-     ...
-    60| class Foo; end
-      |       ^^^
-
-<AssignmentNode>
-  <RefNode name="Foo" />
-</AssignmentNode>
-
-==========================
-     ...
-    61| class Bar < Foo; end
-      |       ^^^
-
-<AssignmentNode>
-  <RefNode name="Bar" />
-</AssignmentNode>
-
-==========================
-     ...
-    63| module Foo::Bar::Baz; end
-      |        ^^^^^^^^^^^^^
-
-<AssignmentNode>
-  <RefNode name="Baz" />
-</AssignmentNode>
-
-==========================
-     ...
-    65| module M1
-      |        ^^
-
-<AssignmentNode>
-  <RefNode name="M1" />
-  <ScopingNode>
-    <AssignmentNode>
-      <RefNode name="M2" />
-      <ScopingNode>
-        <MethodNode name="sum1" />
-      </ScopingNode>
-    </AssignmentNode>
-  </ScopingNode>
-</AssignmentNode>
-
-==========================
-     ...
-    66|   class M2
-      |         ^^
-
-<AssignmentNode>
-  <RefNode name="M2" />
-  <ScopingNode>
-    <MethodNode name="sum1" />
-  </ScopingNode>
-</AssignmentNode>
-
-==========================
-     ...
-    73| class Foo::Bar
-      |       ^^^^^^^^
-
-<AssignmentNode>
-  <RefNode name="Bar" />
-  <ScopingNode>
-    <MethodNode name="sum1" />
-    <ScopingNode>
-      <AssignmentNode>
-        <RefNode name="<<EIGENCLASS>>" />
-        <ScopingNode>
-          <MethodNode name="thing" />
-        </ScopingNode>
-      </AssignmentNode>
-    </ScopingNode>
-  </ScopingNode>
-</AssignmentNode>
-
-==========================
-     ...
-    78|   class << self
-      |   ^^^
-
-<AssignmentNode>
-  <RefNode name="<<EIGENCLASS>>" />
-  <ScopingNode>
-    <MethodNode name="thing" />
-  </ScopingNode>
-</AssignmentNode>
+# AST node:
+<MethodNode name="mixed_args">
+  <ValueNode type="NilClass" value="nil" />
+</MethodNode>
 
 ==========================
 ```

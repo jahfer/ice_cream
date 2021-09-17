@@ -58,10 +58,13 @@ let parse_from_filename filename =
     (Node.node_type node) = "MethodNode"
   )
   |> List.iter (fun node ->
-    print_endline @@ Node.to_rbs node;
+    print_endline @@ "# Original code:";
     print_endline @@ Location.loc_as_string (Node.location node);
+    print_endline @@ "# RBS:";
+    print_endline @@ Node.to_rbs node;
+    print_endline @@ "\n# AST node:";
     print_endline @@ Node.pretty_print node;
-    print_endline "\n==========================";
+    print_endline "\n==========================\n";
   );
   
   (* let scope_as_string (scope) = 
