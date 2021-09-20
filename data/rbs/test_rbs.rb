@@ -9,7 +9,7 @@ module Space
     end
 
     def do_thing(x)
-      @thing + x
+      @thing # + x
     end
   end
 end

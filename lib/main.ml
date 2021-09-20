@@ -54,8 +54,8 @@ let parse_from_filename filename =
   (* Generate index *)
   let index = Ast_index.create ast in
   index
-  |> Query.query_all ~f:(fun node ->
-    (Node.node_type node) = "MethodNode"
+  |> Query.query_all ~flatten:true ~f:(fun node ->
+    (Node.node_type node) = "RefNode"
   )
   |> List.iter (fun node ->
     print_endline @@ "# Original code:";

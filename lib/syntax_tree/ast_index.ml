@@ -23,9 +23,12 @@ module ValueNode = struct
 end
 
 module RefNode = struct
+  type reftype = Local | IVar | Const
+  
   type data = {
     name : string;
     location : Location.t;
+    reftype : reftype;
     (* scope : string list; *)
   }
 
@@ -36,17 +39,19 @@ module RefNode = struct
     let children _ = None
     let parent _ = None
     let attributes t = [
-      ("name", t.name)
+      ("name", t.name);
     ]
 
-    let to_rbs _ = ""
+    let to_rbs t = match t.reftype with
+    | IVar -> Printf.sprintf "%s: %s" t.name "untyped"
+    | _ -> Printf.sprintf "%s: %s" t.name "untyped"
   end)
 
   let from_data t =
     Node.Node (t, (module I))
 
-  let make name location =
-    from_data { name; location }
+  let make name location reftype =
+    from_data { name; location; reftype }
 end
 
 module CallNode = struct
@@ -129,11 +134,17 @@ module MethodNode = struct
 end
 
 module ScopingNode = struct
+  type scope = Module | Class
+
   type data = {
     location : Location.t;
     children : Node.t list;
-    scope_type : string;
+    scope : scope;
   }
+
+  let scope_as_str = function
+  | Module -> "module"
+  | Class -> "class"
 
   module I = Node.Make(struct
     type t = data
@@ -142,17 +153,17 @@ module ScopingNode = struct
     let children t = Some(t.children)
     let parent _ = None
     let attributes t = [
-      ("type", t.scope_type)
+      ("type", scope_as_str t.scope)
     ]
 
-    let to_rbs _ = ""
+    let to_rbs _= ""
   end)
 
   let from_data t =
     Node.Node (t, (module I))
 
-  let make location children scope_type =
-    Node.Node ({ location; children; scope_type }, (module I))
+  let make location children scope =
+    Node.Node ({ location; children; scope }, (module I))
 end
 
 module AssignmentNode = struct
@@ -170,6 +181,12 @@ module AssignmentNode = struct
     let attributes t = [
       ("label", t.target.name)
     ]
+
+    (* let to_rbs t = match t.target.reftype with
+    | Const -> match Node.node_type t.value with
+      | "ScopingNode" -> Printf.sprintf "%s %s" t.target.name t.attributes
+      | _ -> raise (Failure "Unimplemented")
+    | _ -> "" *)
 
     let to_rbs _ = ""
   end)
@@ -192,7 +209,11 @@ let create ast =
       (* TODO: Constants don't need a definition *)
       | [] -> raise (Failure (Printf.sprintf "Assignment to `%s` has no value!" name))
       | _ :: _ -> raise (Failure "Assignment has too many nodes for value") in
-      let node = (AssignmentNode.make { name; location } value) in
+      let reftype = match expr with
+      | ExprAssign _ -> RefNode.Local
+      | ExprIVarAssign _ -> IVar
+      | _ -> raise (Failure "Unreachable") in
+      let node = (AssignmentNode.make { name; location; reftype } value) in
       node :: acc
     | ExprConstAssign ((ExprConst ((name, _), _), location'), expr') ->
       let value = match traverse [] expr' with
@@ -200,20 +221,21 @@ let create ast =
       (* TODO: Constants don't need a definition *)
       | [] -> ValueNode.make Any  location' 
       | _ :: _ -> raise (Failure "Assignment has too many nodes for value") in
-      let node = (AssignmentNode.make { name; location } value) in
+      let node = (AssignmentNode.make { name; location; reftype = Const } value) in
       node :: acc
     (* RefNode *)
-    | ExprVar (name, _t)
+    | ExprVar (name, _t) ->
+      (RefNode.make name location Local) :: acc
     | ExprIVar (name, _t) ->
-      (RefNode.make name location) :: acc
+      (RefNode.make name location IVar) :: acc
     (* ScopingNode *)
     | ExprModuleBody expr' ->
       let children = traverse [] expr' in
-      let node = (ScopingNode.make location children "Module") in
+      let node = (ScopingNode.make location children Module) in
       node :: acc
     | ExprClassBody expr' ->
       let children = traverse [] expr' in
-      let node = (ScopingNode.make location children "Class") in
+      let node = (ScopingNode.make location children Class) in
       node :: acc
     | ExprBlock (expr1, expr2) -> 
       let children1 = (traverse [] expr1) in
@@ -244,7 +266,7 @@ let create ast =
       let node = ValueNode.make v location in
       node :: acc
     | ExprConst ((name, _t), _nesting) ->
-      let node = RefNode.make name location in
+      let node = RefNode.make name location Const in
       node :: acc
     | ExprProc _ -> acc (* TODO *)
     (* Unreachable *)
