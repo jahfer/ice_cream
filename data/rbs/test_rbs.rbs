@@ -2,7 +2,9 @@ module Space
   class Foo
     attr_reader thing: untyped
     attr_accessor another: untyped
+
     def initialize: (untyped a, untyped b) -> untyped
-    def do_thing: (untyped x) -> untyped # (<+ : a -> b>, a) -> b
+
+    def do_thing: (untyped x) -> untyped
   end
 end

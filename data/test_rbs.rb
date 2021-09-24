@@ -9,10 +9,10 @@ module Space
     end
 
     def do_thing(x)
-      @thing # + x
+      x.call(@thing)
     end
   end
 end
 
 spacefoo = Space::Foo.new(4, "Yes")
-spacefoo.do_thing(10)
+spacefoo.do_thing(-> (x) { puts(x) })
