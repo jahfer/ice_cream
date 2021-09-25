@@ -1,12 +1,14 @@
 FORMAT ?= exe
-FILE ?= data/test_kitchen_sink.rb
-DIR_RBS ?= data/rbs
+DIR ?= data/example
 
 build:
 	dune build bin/cli.$(FORMAT)
 
 run:
-	OCAMLRUNPARAM=b dune exec bin/cli.$(FORMAT) -- --import-rbs=$(DIR_RBS) $(FILE) 
+	OCAMLRUNPARAM=b dune exec bin/cli.$(FORMAT) -- --dir=$(DIR)
+
+check:
+	OCAMLRUNPARAM=b dune exec bin/cli.$(FORMAT) -- --dir=$(DIR) --check 
 
 test:
 	dune runtest
@@ -14,4 +16,4 @@ test:
 clean:
 	dune clean
 
-.PHONY: build clean run test
+.PHONY: build clean run test check

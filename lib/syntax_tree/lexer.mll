@@ -4,7 +4,7 @@
 
   exception SyntaxError of string
 
-  type lex_state = {
+  type lex_ruby_state = {
     (* newline-agnostic unterminated statement *)
     mutable pending_termination : bool;
     mutable at_eos : bool;
@@ -38,16 +38,16 @@ let exp = ['e' 'E'] ['-' '+']? digit+
 let float = digit* frac? exp?
 let white = [' ' '\t']+
 let newline = '\r' | '\n' | "\r\n"
-let id =  ['a'-'z' '_'] ['a'-'z' 'A'-'Z' '0'-'9' '_']*
+let id =  ['a'-'z' '_'] ['a'-'z' 'A'-'Z' '0'-'9' '_']* '?'?
 let ivar = ['@'] id
 let const = ['A'-'Z'] ['a'-'z' 'A'-'Z' '_' '0'-'9']*
 
-rule read state = parse
-  | white    { read state lexbuf }
+rule read_ruby state = parse
+  | white    { read_ruby state lexbuf }
   | newline  {
     Lexing.new_line lexbuf;
     if state.pending_termination || state.at_eos then
-      read state lexbuf
+      read_ruby state lexbuf
     else begin
       state.at_eos <- true; EOS
     end
@@ -114,7 +114,7 @@ rule read state = parse
 and comment state = parse
 | newline {
   Lexing.new_line lexbuf;
-  read state lexbuf
+  read_ruby state lexbuf
 }
 | _ { comment state lexbuf }
 
@@ -133,3 +133,27 @@ and read_string buf = parse
     }
   | _ { raise (SyntaxError ("Illegal string character: " ^ Lexing.lexeme lexbuf)) }
   | eof { raise (SyntaxError ("String is not terminated")) }
+
+and read_rbs state = parse
+  | white    { read_ruby state lexbuf }
+  | newline  {
+    Lexing.new_line lexbuf;
+    if state.pending_termination || state.at_eos then
+      read_ruby state lexbuf
+    else begin
+      state.at_eos <- true; EOS
+    end
+  }
+  | "def"    { newline_agnostic_tok state; DEF }
+  | "class"  { ack_tok state; CLASSDEF }
+  | "module" { ack_tok state; MODDEF }
+  | ':'      { ack_tok state; COLON }
+  | "end"    { terminating_tok state; END }
+  | '['      { newline_agnostic_tok state; LBRACK }
+  | '('      { newline_agnostic_tok state; LPAREN }
+  | ']'      { terminating_tok state;      RBRACK }
+  | ')'      { terminating_tok state;      RPAREN }
+  | const    { terminating_tok state; CONST (Lexing.lexeme lexbuf) }
+  | id       { terminating_tok state; ID (Lexing.lexeme lexbuf) }
+  | _        { raise (SyntaxError (sprintf "Unexpected char: '%s'" (Lexing.lexeme lexbuf))) }
+  | eof      { EOF }

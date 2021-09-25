@@ -39,6 +39,15 @@ and 'a expr =
 
 and 'a expression = 'a expr * 'a
 
+type 'a decl =
+  | DeclClass of string * type_variable list option * 'a type_interface
+  | DeclModule of string * type_variable list option
+  | DeclMethod of string
+
+and 'a type_interface = 'a declaration list
+and type_variable = TypeVar of string
+and 'a declaration = 'a decl * 'a
+
 let rec map_metadata fn expr meta =
   let swap_meta = map_metadata fn in
   let new_expr = match expr with

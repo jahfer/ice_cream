@@ -17,17 +17,25 @@
   open Ast
   open Location
 
-  let loc_annot
+  let loc_annot_expr
     ((start_pos, end_pos) : Lexing.position * Lexing.position)
     (expr : Location.t Ast.expr) =
       (expr, { id = Location.gen_id (); start_pos; end_pos; })
+
+  let loc_annot_decl
+    ((start_pos, end_pos) : Lexing.position * Lexing.position)
+    (decl : Location.t Ast.decl) =
+      (decl, { id = Location.gen_id (); start_pos; end_pos; })
 %}
 
-%start <Location.t Ast.expression option> prog
+%start <Location.t Ast.expression option> ruby
+%start <Location.t Ast.declaration option> rbs
 
 %%
 
-prog:
+// Ruby Parser
+
+ruby:
   | s = top_statement { Some s }
   | EOF               { None   }
   ;
@@ -39,8 +47,8 @@ top_statement:
   // this needs to be here so we don't swallow the EOS
   // TODO I don't remember why this exists...
   | m = ID args = separated_nonempty_list(COMMA, statement) {
-    let sub_expr = ExprValue(Nil) |> loc_annot $sloc in
-    ExprCall(sub_expr, m, (args, None)) |> loc_annot $sloc
+    let sub_expr = ExprValue(Nil) |> loc_annot_expr $sloc in
+    ExprCall(sub_expr, m, (args, None)) |> loc_annot_expr $sloc
   }
   ;
 
@@ -52,23 +60,23 @@ top_statement_end:
 
 statement:
   | ref = ID             {
-    ExprVar((ref, Any)) |> loc_annot $sloc
+    ExprVar((ref, Any)) |> loc_annot_expr $sloc
   }
   | ref = iv_identifier          {
-    ExprIVar(ref) |> loc_annot $sloc
+    ExprIVar(ref) |> loc_annot_expr $sloc
   }
   | id = ID EQ v = rhs_assign    {
-    ExprAssign(id, v) |> loc_annot $loc(id)
+    ExprAssign(id, v) |> loc_annot_expr $loc(id)
   }
   | id = IVAR EQ v = rhs_assign  {
-    ExprIVarAssign(id, v) |> loc_annot $loc(id)
+    ExprIVarAssign(id, v) |> loc_annot_expr $loc(id)
   }
   | cls = const EQ v = rhs_assign  {
     let (_, loc) = cls in
-    ExprConstAssign(cls, v) |> loc_annot (loc.start_pos, loc.end_pos)
+    ExprConstAssign(cls, v) |> loc_annot_expr (loc.start_pos, loc.end_pos)
   }
   | p = primitive                {
-    ExprValue(p) |> loc_annot $sloc
+    ExprValue(p) |> loc_annot_expr $sloc
   }
   | c = class_def                { c }
   | m = mod_def                  { m }
@@ -88,10 +96,10 @@ expr:
 
 block:
   | DO EOS? body = block_body END {
-    ExprProc ([], body) |> loc_annot $sloc
+    ExprProc ([], body) |> loc_annot_expr $sloc
   }
   | DO args = block_args EOS? body = block_body END {
-    ExprProc (args, body) |> loc_annot $sloc
+    ExprProc (args, body) |> loc_annot_expr $sloc
   }
   %inline block_body:
   | s = statement statement_end? { s }
@@ -102,30 +110,30 @@ command_call:
 
 command:
   | m = method_call args = command_args {
-    let sub_expr = ExprValue(Nil) |> loc_annot $sloc in
-    ExprCall(sub_expr, m, args)   |> loc_annot $sloc
+    let sub_expr = ExprValue(Nil) |> loc_annot_expr $sloc in
+    ExprCall(sub_expr, m, args)   |> loc_annot_expr $sloc
   }
   | m = ID args = command_args {
-    let sub_expr = ExprValue(Nil) |> loc_annot $sloc in
-    ExprCall(sub_expr, m, args)   |> loc_annot $sloc
+    let sub_expr = ExprValue(Nil) |> loc_annot_expr $sloc in
+    ExprCall(sub_expr, m, args)   |> loc_annot_expr $sloc
   }
   | c1 = ID call_op c2 = method_call {
-    let sub_expr = ExprVar((c1, Any)) |> loc_annot $loc(c1) in
-    ExprCall(sub_expr, c2, ([], None)) |> loc_annot $sloc
+    let sub_expr = ExprVar((c1, Any)) |> loc_annot_expr $loc(c1) in
+    ExprCall(sub_expr, c2, ([], None)) |> loc_annot_expr $sloc
   }
   | cst = const call_op c2 = method_call {
-    ExprCall(cst, c2, ([], None)) |> loc_annot $sloc
+    ExprCall(cst, c2, ([], None)) |> loc_annot_expr $sloc
   }
   | c1 = ID call_op c2 = method_call args = command_args {
-    let sub_expr = ExprVar((c1, Any)) |> loc_annot $loc(c1) in
-    ExprCall(sub_expr, c2, args) |> loc_annot $sloc
+    let sub_expr = ExprVar((c1, Any)) |> loc_annot_expr $loc(c1) in
+    ExprCall(sub_expr, c2, args) |> loc_annot_expr $sloc
   }
   | cst = const call_op c2 = method_call args = command_args {
-    ExprCall(cst, c2, args) |> loc_annot $sloc
+    ExprCall(cst, c2, args) |> loc_annot_expr $sloc
   }
   | c1 = ARR_ACCESS_ID arg = statement RBRACK {
-    let sub_expr = ExprVar((c1, Any)) |> loc_annot $loc(c1) in
-    ExprCall(sub_expr, "[]", ([arg], None)) |> loc_annot $sloc
+    let sub_expr = ExprVar((c1, Any)) |> loc_annot_expr $loc(c1) in
+    ExprCall(sub_expr, "[]", ([arg], None)) |> loc_annot_expr $sloc
   }
   ;
 
@@ -151,8 +159,8 @@ func:
     | Some(a) -> a
     | None -> []
     in
-    let body = ExprValue(Nil) |> loc_annot $sloc in
-    ExprFunc(fn, args, body) |> loc_annot ($symbolstartpos, $endpos(args))
+    let body = ExprValue(Nil) |> loc_annot_expr $sloc in
+    ExprFunc(fn, args, body) |> loc_annot_expr ($symbolstartpos, $endpos(args))
   }
   // Multi-line function
   | DEF fn = ID args = fn_args? EOS? body = nonempty_list(top_statement) END {
@@ -160,11 +168,11 @@ func:
     | Some(a) -> a
     | None -> []
     in
-    let empty_body = ExprEmptyBlock |> loc_annot $sloc in
+    let empty_body = ExprEmptyBlock |> loc_annot_expr $sloc in
     let body_expr = List.fold_left (fun acc expr ->
-      ExprBlock(expr, acc) |> loc_annot $sloc
+      ExprBlock(expr, acc) |> loc_annot_expr $sloc
     ) empty_body @@ List.rev body in
-    ExprFunc(fn, args, body_expr) |> loc_annot ($symbolstartpos, $endpos(args))
+    ExprFunc(fn, args, body_expr) |> loc_annot_expr ($symbolstartpos, $endpos(args))
   }
   // Single line function
   | DEF fn = ID args = fn_args? EOS? body = statement END {
@@ -172,63 +180,63 @@ func:
     | Some(a) -> a
     | None -> []
     in
-    let empty_body = ExprEmptyBlock |> loc_annot $sloc in
-    let body_expr = ExprBlock(body, empty_body) |> loc_annot $loc(body) in
-    ExprFunc(fn, args, body_expr) |> loc_annot ($symbolstartpos, $endpos(args))
+    let empty_body = ExprEmptyBlock |> loc_annot_expr $sloc in
+    let body_expr = ExprBlock(body, empty_body) |> loc_annot_expr $loc(body) in
+    ExprFunc(fn, args, body_expr) |> loc_annot_expr ($symbolstartpos, $endpos(args))
   }
   ;
 
 class_def:
   // class << self
   | CLASSDEF LSHIFT SELF EOS END {
-    let const = ExprConst(("<<EIGENCLASS>>", Any), []) |> loc_annot $sloc in
-    let empty_body = ExprEmptyBlock |> loc_annot $sloc in
-    let class_body = ExprClassBody(empty_body) |> loc_annot $sloc in
-    ExprConstAssign(const, class_body) |> loc_annot $sloc
+    let const = ExprConst(("<<EIGENCLASS>>", Any), []) |> loc_annot_expr $sloc in
+    let empty_body = ExprEmptyBlock |> loc_annot_expr $sloc in
+    let class_body = ExprClassBody(empty_body) |> loc_annot_expr $sloc in
+    ExprConstAssign(const, class_body) |> loc_annot_expr $sloc
   }
   | _c = CLASSDEF LSHIFT _s = SELF EOS class_body = body END {
-    let const = ExprConst(("<<EIGENCLASS>>", Any), []) |> loc_annot $sloc in
-    ExprConstAssign(const, class_body) |> loc_annot ($startpos(_c), $endpos(_s))
+    let const = ExprConst(("<<EIGENCLASS>>", Any), []) |> loc_annot_expr $sloc in
+    ExprConstAssign(const, class_body) |> loc_annot_expr ($startpos(_c), $endpos(_s))
   }
   // TODO unimplemented!!!
   // class x < y
   | CLASSDEF cls = const _parent = class_inherit? EOS END {
-    let empty_body = ExprEmptyBlock |> loc_annot $sloc in
-    let class_body = ExprClassBody(empty_body) |> loc_annot $sloc in
+    let empty_body = ExprEmptyBlock |> loc_annot_expr $sloc in
+    let class_body = ExprClassBody(empty_body) |> loc_annot_expr $sloc in
     let (_, loc) = cls in
-    ExprConstAssign(cls, class_body) |> loc_annot ($symbolstartpos, loc.end_pos)
+    ExprConstAssign(cls, class_body) |> loc_annot_expr ($symbolstartpos, loc.end_pos)
   }
   | CLASSDEF cls = const _parent = class_inherit? EOS class_body = body END {
     let (_, loc) = cls in
-    ExprConstAssign(cls, class_body) |> loc_annot ($symbolstartpos, loc.end_pos)
+    ExprConstAssign(cls, class_body) |> loc_annot_expr ($symbolstartpos, loc.end_pos)
   }
   %inline class_inherit:
   | LESS c = const { c }
   body:
   | body = nonempty_list(top_statement) {
-    let empty_body = ExprEmptyBlock |> loc_annot $sloc in
+    let empty_body = ExprEmptyBlock |> loc_annot_expr $sloc in
     let body_expr = List.fold_left (fun acc expr ->
-      ExprBlock(expr, acc) |> loc_annot $sloc
+      ExprBlock(expr, acc) |> loc_annot_expr $sloc
     ) empty_body @@ List.rev body in
-    ExprClassBody(body_expr) |> loc_annot $loc(body)
+    ExprClassBody(body_expr) |> loc_annot_expr $loc(body)
   }
 
 
 mod_def:
   | MODDEF cls = const EOS END {
-    let empty_body = ExprEmptyBlock |> loc_annot $sloc in
-    let class_body = ExprModuleBody(empty_body) |> loc_annot $sloc in
+    let empty_body = ExprEmptyBlock |> loc_annot_expr $sloc in
+    let class_body = ExprModuleBody(empty_body) |> loc_annot_expr $sloc in
     let (_, loc) = cls in
-    ExprConstAssign(cls, class_body) |> loc_annot ($symbolstartpos, loc.end_pos)
+    ExprConstAssign(cls, class_body) |> loc_annot_expr ($symbolstartpos, loc.end_pos)
   }
   | MODDEF cls = const EOS body = nonempty_list(top_statement) END {
-    let empty_body = ExprEmptyBlock |> loc_annot $sloc in
+    let empty_body = ExprEmptyBlock |> loc_annot_expr $sloc in
     let body_expr = List.fold_left (fun acc expr ->
-      ExprBlock(expr, acc) |> loc_annot $sloc
+      ExprBlock(expr, acc) |> loc_annot_expr $sloc
     ) empty_body @@ List.rev body in
-    let class_body = ExprModuleBody(body_expr) |> loc_annot $loc(body) in
+    let class_body = ExprModuleBody(body_expr) |> loc_annot_expr $loc(body) in
     let (_, loc) = cls in
-    ExprConstAssign(cls, class_body) |> loc_annot ($symbolstartpos, loc.end_pos)
+    ExprConstAssign(cls, class_body) |> loc_annot_expr ($symbolstartpos, loc.end_pos)
   }
 
 primitive:
@@ -246,11 +254,11 @@ primitive:
 lambda:
   | body = lambda_body {
     let lambda = Lambda (([]), body) in
-    ExprValue(lambda) |> loc_annot $sloc
+    ExprValue(lambda) |> loc_annot_expr $sloc
   }
   | args = fn_args body = lambda_body {
     let lambda = Lambda (args, body) in
-    ExprValue(lambda) |> loc_annot $sloc
+    ExprValue(lambda) |> loc_annot_expr $sloc
   }
   %inline lambda_body:
   // TODO: Does this need to be a list of statements?
@@ -258,7 +266,7 @@ lambda:
     s
   }
   | LAMBEG RBRACE {
-    ExprValue(Nil) |> loc_annot $sloc
+    ExprValue(Nil) |> loc_annot_expr $sloc
   }
   ;
 
@@ -301,6 +309,47 @@ const:
     | [] -> $syntaxerror
     | const :: nesting -> 
       let nesting_t = List.map (fun x -> (x, Any)) nesting in
-      ExprConst((const, Any), nesting_t) |> loc_annot $sloc
+      ExprConst((const, Any), nesting_t) |> loc_annot_expr $sloc
   }
   ;
+
+// RBS Parser
+
+rbs:
+  | d = top_decl { Some d }
+  | EOF          { None   }
+  ;
+
+top_decl:
+  | s = decl top_decl_end { s }
+  ;
+
+decl_end:
+  EOS { };
+
+top_decl_end:
+  decl_end | EOF { };
+
+decl:
+| CLASSDEF typ = rb_type type_vars = module_type_parameters? EOS decls = top_decl* END {
+  DeclClass((typ, type_vars, decls)) |> loc_annot_decl $sloc
+}
+| DEF id = ID COLON {
+  DeclMethod(id) |> loc_annot_decl $sloc
+}
+;
+
+module_type_parameters:
+| tlist = delimited(LBRACK, separated_nonempty_list(COMMA, module_type_parameter), RBRACK) {
+  tlist
+}
+%inline module_type_parameter:
+| t = type_variable {
+  TypeVar t
+}
+%inline type_variable:
+| c = rb_type { c }
+;
+
+rb_type:
+| c = CONST { c }

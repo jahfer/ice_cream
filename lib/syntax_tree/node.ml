@@ -60,18 +60,20 @@ let rec pretty_print : ?indent:int -> t -> string =
     let j = i * 2 in
     let node_type = M.node_type node in
     let attributes = M.attributes node in
+    let open ANSITerminal in
     let attr_string = match attributes with
     | [] -> ""
     | attrs -> let vals = String.concat " "
-      (List.map (fun (k,v) -> Printf.sprintf "%s=\"%s\"" k v) attrs) in
+      (List.map (fun (k,v) -> 
+        Printf.sprintf "%s=\"%s\"" (sprintf [cyan] "%s" k) (sprintf [green] "%s" v)) attrs) in
       " " ^ vals in
     match M.children node with
     | Some (children) ->
       Printf.sprintf "%*s<%s%s>\n%s\n%*s</%s>"
         j ""
-        node_type
+        (sprintf [yellow] "%s" node_type)
         attr_string
         (String.concat "\n" (List.map (pretty_print ~indent:(i+1)) children))
         j ""
-        node_type
-    | None -> Printf.sprintf "%*s<%s%s />" j "" node_type attr_string
+        (sprintf [yellow] "%s" node_type)
+    | None -> Printf.sprintf "%*s<%s%s />" j "" (sprintf [yellow] "%s" node_type) attr_string
