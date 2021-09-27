@@ -30,15 +30,6 @@ x.foo = bar
 # array/hash assignment
 hash[:foo] = bar
 
-# named parameters
-def foo(bar:); end
-
-# default positional argument values
-def foo(bar = true); end
-
-# default named parameter values
-def foo(bar: true); end
-
 # heredoc
 <<~MSG
 Hello, name!
