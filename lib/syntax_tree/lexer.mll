@@ -135,11 +135,11 @@ and read_string buf = parse
   | eof { raise (SyntaxError ("String is not terminated")) }
 
 and read_rbs state = parse
-  | white    { read_ruby state lexbuf }
+  | white    { read_rbs state lexbuf }
   | newline  {
     Lexing.new_line lexbuf;
     if state.pending_termination || state.at_eos then
-      read_ruby state lexbuf
+      read_rbs state lexbuf
     else begin
       state.at_eos <- true; EOS
     end
@@ -147,8 +147,9 @@ and read_rbs state = parse
   | "def"    { newline_agnostic_tok state; DEF }
   | "class"  { ack_tok state; CLASSDEF }
   | "module" { ack_tok state; MODDEF }
-  | ':'      { ack_tok state; COLON }
   | "end"    { terminating_tok state; END }
+  | "->"     { ack_tok state; DECL_ARR }
+  | ':'      { ack_tok state; COLON }
   | '['      { newline_agnostic_tok state; LBRACK }
   | '('      { newline_agnostic_tok state; LPAREN }
   | ']'      { terminating_tok state;      RBRACK }

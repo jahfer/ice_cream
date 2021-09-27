@@ -13,6 +13,9 @@
 %token EQ DEF END LAMBDA DOT CLASSDEF MODDEF PIPE
 %token DO 
 
+// RBS-specific
+%token DECL_ARR
+
 %{
   open Ast
   open Location
@@ -331,11 +334,11 @@ top_decl_end:
   decl_end | EOF { };
 
 decl:
-| CLASSDEF typ = rb_type type_vars = module_type_parameters? EOS decls = top_decl* END {
+| CLASSDEF typ = rb_class_type type_vars = module_type_parameters? EOS decls = top_decl* END {
   DeclClass((typ, type_vars, decls)) |> loc_annot_decl $sloc
 }
-| DEF id = ID COLON {
-  DeclMethod(id) |> loc_annot_decl $sloc
+| DEF id = ID COLON args = delimited(LPAREN, separated_list(COMMA, rb_class_type), RPAREN) DECL_ARR ret = ID {
+  DeclMethod(id, args, ret) |> loc_annot_decl $sloc
 }
 ;
 
@@ -348,8 +351,8 @@ module_type_parameters:
   TypeVar t
 }
 %inline type_variable:
-| c = rb_type { c }
+| c = rb_class_type { c }
 ;
 
-rb_type:
+rb_class_type:
 | c = CONST { c }

@@ -11,6 +11,10 @@
 
 ### Current Status: Parsing (mostly) works!
 
+There's even some kind of error messaging! 
+
+![Error messages](https://github.com/jahfer/ice_cream/blob/main/images/errors.png)
+
 #### Unsupported Syntax (for now)
 
 ```ruby

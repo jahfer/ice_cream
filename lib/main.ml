@@ -1,7 +1,6 @@
 let eval_env ~dir =
   Environment.make ()
-  |> Environment.import_rbs_dir dir
-  |> Environment.import_rb_dir dir
+  |> Environment.import_dir dir
   |> Environment.untyped_tree
   |> Ast_index.create
   (* |> Query.query_all ~flatten:true ~f:(fun node ->
@@ -19,5 +18,5 @@ let eval_env ~dir =
 
 let check_env ~dir =
   Environment.make ()
-  |> Environment.import_rbs_dir dir
+  |> Environment.import_dir ~filetypes:[Filesystem.RBS] dir
   |> ignore

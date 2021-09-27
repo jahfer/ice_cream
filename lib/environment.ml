@@ -9,6 +9,8 @@ type t = {
   declarations : declarations;
 }
 
+let untyped_tree (environment : t) = environment.ast
+
 let make () = { ast = []; declarations = []; }
 
 type lex_state = Lexer.lex_ruby_state
@@ -23,73 +25,65 @@ let init_state () : lex_ruby_state = {
 
 let state = init_state ()
 
-let print_position outx lexbuf =
+module Printer = struct
+  let print_position lexbuf =
   let pos = lexbuf.lex_curr_p in
-  Format.fprintf outx "%s:%d:%d" pos.pos_fname
+    ANSITerminal.(sprintf [white] "%s:%d:%d" pos.pos_fname)
     pos.pos_lnum (pos.pos_cnum - pos.pos_bol + 1)
+
+  let syntax_err lexbuf msg = 
+    ANSITerminal.(eprintf [white; on_red; Bold] " %s "  msg);
+    ANSITerminal.(eprintf [default] " %s\n"(print_position lexbuf));
+    ANSITerminal.(prerr_string [default] (Location.loc_as_string {
+      id = 1;
+      start_pos = lexbuf.lex_start_p;
+      end_pos = lexbuf.lex_curr_p 
+    }));
+    ANSITerminal.(prerr_string [default] "\n")
+
+  let parser_err lexbuf =
+    let tok = Lexing.lexeme lexbuf in
+    ANSITerminal.(eprintf [white; on_red; Bold] " Syntax error ('%s') " tok);
+    ANSITerminal.(eprintf [default] " %s\n"(print_position lexbuf));
+    ANSITerminal.(prerr_string [default] (Location.loc_as_string {
+      id = 1;
+      start_pos = lexbuf.lex_start_p;
+      end_pos = lexbuf.lex_curr_p 
+    }));
+    ANSITerminal.(prerr_string [default] "\n")
+end
 
 let parse_ruby lexbuf =
   try Parser.ruby (Lexer.read_ruby state) lexbuf with
-  | Lexer.SyntaxError msg ->
-    Format.fprintf Format.std_formatter "%a: %s\n" print_position lexbuf msg;
-    None
-  | Parser.Error ->
-    let tok = Lexing.lexeme lexbuf in
-    Format.fprintf Format.std_formatter "%a: Syntax error ('%s')\n" print_position lexbuf tok;
-    None
+  | Lexer.SyntaxError msg -> Printer.syntax_err lexbuf msg; None
+  | Parser.Error -> Printer.parser_err lexbuf; None
 
 let parse_rbs lexbuf =
   try Parser.rbs (Lexer.read_rbs state) lexbuf with
-  | Lexer.SyntaxError msg ->
-    Format.fprintf Format.std_formatter "%a: %s\n" print_position lexbuf msg;
-    None
-  | Parser.Error ->
-    let tok = Lexing.lexeme lexbuf in
-    Format.fprintf Format.std_formatter "%a: Syntax error ('%s')\n" print_position lexbuf tok;
-      None
+  | Lexer.SyntaxError msg -> Printer.syntax_err lexbuf msg; None
+  | Parser.Error -> Printer.parser_err lexbuf; None
 
-let parse_ruby_buffer lexbuf =
+let parse_buffer parser lexbuf =
   (* iterate through buffer to cumulatively build untyped AST *)
   let rec build_untyped_ast lexbuf acc =
-    match parse_ruby lexbuf with
+    match parser lexbuf with
     | Some (expr) ->
       build_untyped_ast lexbuf (expr :: acc)
     | None -> acc in
   build_untyped_ast lexbuf [] 
 
-let parse_rbs_buffer lexbuf =
-  (* iterate through buffer to cumulatively build untyped AST *)
-  let rec build_untyped_ast lexbuf acc =
-    match parse_rbs lexbuf with
-    | Some (expr) ->
-      build_untyped_ast lexbuf (expr :: acc)
-    | None -> acc in
-  build_untyped_ast lexbuf [] 
-  
+let import (file : Filesystem.file) (environment : t) : t =
+  Printf.printf "Importing file:  `%s`\n" file.name;
+  let lexfn = (fun parsefn lexbuf ->
+      lexbuf.lex_curr_p <- { lexbuf.lex_curr_p with pos_fname = file.name }; parsefn lexbuf) in
+  let ruby_parser = (lexfn (parse_buffer parse_ruby)) in
+  let rbs_parser = (lexfn (parse_buffer parse_rbs)) in
+  match file.filetype with
+  | Ruby -> let ast = Filesystem.lexbuf_of_file file.name ruby_parser in { environment with ast }
+  | RBS -> let declarations = Filesystem.lexbuf_of_file file.name rbs_parser in {environment with declarations }
+  | Uunsupported -> raise (Failure "Whoops!")
 
-let untyped_tree (environment : t) = environment.ast
-
-(* TODO: Parse and import RBS to env *)
-let import_rbs (filename : string) (environment : t) : t = 
-  Printf.printf "Importing RBS file:  `%s`\n" filename;
-  let declarations = Filesystem.lexbuf_of_file filename (fun lexbuf -> 
-    lexbuf.lex_curr_p <- { lexbuf.lex_curr_p with pos_fname = filename };
-    parse_rbs_buffer lexbuf
-  ) in { environment with declarations }
-
-let import_rbs_dir (directory : string) (environment : t) : t =
+let import_dir ?(filetypes=[Filesystem.Ruby; RBS]) (directory : string) (environment : t)  : t =
   List.fold_left
-    (fun env filename -> import_rbs filename env) environment
-    Filesystem.(files_of_dir RBS directory)
-
-let import_rb (filename : string) (environment : t) : t =
-  Printf.printf "Importing Ruby file: `%s`\n" filename;
-  let ast = Filesystem.lexbuf_of_file filename (fun lexbuf -> 
-    lexbuf.lex_curr_p <- { lexbuf.lex_curr_p with pos_fname = filename };
-    parse_ruby_buffer lexbuf
-  ) in { environment with ast }
-
-let import_rb_dir (directory : string) (environment : t) : t =
-  List.fold_left
-    (fun env filename -> import_rb filename env) environment
-    Filesystem.(files_of_dir Ruby directory)
+    (fun env filename -> import filename env) environment
+    Filesystem.(files_of_dir filetypes directory)
