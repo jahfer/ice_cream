@@ -1,7 +1,7 @@
 let eval_env ~dir =
   Environment.make ()
   |> Environment.import_dir dir
-  |> Environment.untyped_tree
+  |> Environment.get_untyped_tree
   |> Ast_index.create
   (* |> Query.query_all ~flatten:true ~f:(fun node ->
     (Node.node_type node) = "RefNode"
@@ -17,6 +17,8 @@ let eval_env ~dir =
   )
 
 let check_env ~dir =
-  Environment.make ()
+  let result = Environment.make ()
   |> Environment.import_dir ~filetypes:[Filesystem.RBS] dir
-  |> ignore
+  |> Environment.get_declarations
+  |> List.map Ast.Declarations.string_of_decl
+  in print_endline @@ String.concat "\n" result

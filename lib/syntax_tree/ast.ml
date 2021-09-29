@@ -39,14 +39,29 @@ and 'a expr =
 
 and 'a expression = 'a expr * 'a
 
-type 'a decl =
-  | DeclClass of string * type_variable list option * 'a type_interface
-  | DeclModule of string * type_variable list option
-  | DeclMethod of string (*name*) * string list (*args*) * string (*return type*)
+module Declarations = struct
+  type tclass
+  type tmodule
+  type tmethod
 
-and 'a type_interface = 'a declaration list
-and type_variable = TypeVar of string
-and 'a declaration = 'a decl * 'a
+  type _ t =
+    | Class : string * string t list option * decl list -> tclass t
+    | Module : string * string t list option * decl list -> tmodule t
+    | Method : string * string t list * string t -> tmethod t
+    | Type : string -> string t
+
+  and decl = | Decl : 'a t * Location.t -> decl
+
+  let rec string_of_decl : decl -> string = fun (Decl (t, _loc)) ->
+    let rec string_of_t : type a. a t -> string = function
+    | Class (name, _tvars, body) ->
+      Printf.sprintf "class %s %s" name (String.concat "\n└── " @@ List.map string_of_decl body)
+    | Module (name, _tvars, _body) -> name
+    | Method (name, args, return) ->
+      Printf.sprintf "#%s (%s) -> %s" name (String.concat "," @@ List.map string_of_t args) (string_of_t return)
+    | Type t -> t
+  in string_of_t t
+end
 
 let rec map_metadata fn expr meta =
   let swap_meta = map_metadata fn in

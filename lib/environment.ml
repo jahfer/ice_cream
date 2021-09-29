@@ -2,14 +2,15 @@ open Lexing
 open Lexer
 
 type syntax_tree = Location.t Ast.expression list
-type declarations = Location.t Ast.declaration list
+type declarations = Ast.Declarations.decl list
 
 type t = {
   ast : syntax_tree;
   declarations : declarations;
 }
 
-let untyped_tree (environment : t) = environment.ast
+let get_untyped_tree (environment : t) = environment.ast
+let get_declarations (environment : t) = environment.declarations
 
 let make () = { ast = []; declarations = []; }
 
@@ -27,9 +28,9 @@ let state = init_state ()
 
 module Printer = struct
   let print_position lexbuf =
-  let pos = lexbuf.lex_curr_p in
+    let pos = lexbuf.lex_curr_p in
     ANSITerminal.(sprintf [white] "%s:%d:%d" pos.pos_fname)
-    pos.pos_lnum (pos.pos_cnum - pos.pos_bol + 1)
+      pos.pos_lnum (pos.pos_cnum - pos.pos_bol + 1)
 
   let syntax_err lexbuf msg = 
     ANSITerminal.(eprintf [white; on_red; Bold] " %s "  msg);
@@ -70,7 +71,7 @@ let parse_buffer parser lexbuf =
     | Some (expr) ->
       build_untyped_ast lexbuf (expr :: acc)
     | None -> acc in
-  build_untyped_ast lexbuf [] 
+  build_untyped_ast lexbuf []
 
 let import (file : Filesystem.file) (environment : t) : t =
   Printf.printf "Importing file:  `%s`\n" file.name;

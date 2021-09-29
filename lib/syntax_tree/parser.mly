@@ -20,19 +20,20 @@
   open Ast
   open Location
 
+  type pos = Lexing.position * Lexing.position
+
   let loc_annot_expr
     ((start_pos, end_pos) : Lexing.position * Lexing.position)
     (expr : Location.t Ast.expr) =
       (expr, { id = Location.gen_id (); start_pos; end_pos; })
 
-  let loc_annot_decl
-    ((start_pos, end_pos) : Lexing.position * Lexing.position)
-    (decl : Location.t Ast.decl) =
-      (decl, { id = Location.gen_id (); start_pos; end_pos; })
+  let loc_annot_decl : type a. pos -> a Ast.Declarations.t -> Ast.Declarations.decl =
+  fun (start_pos, end_pos) decl ->
+      Ast.Declarations.Decl (decl, { id = Location.gen_id (); start_pos; end_pos; })
 %}
 
 %start <Location.t Ast.expression option> ruby
-%start <Location.t Ast.declaration option> rbs
+%start <Ast.Declarations.decl option> rbs
 
 %%
 
@@ -335,10 +336,15 @@ top_decl_end:
 
 decl:
 | CLASSDEF typ = rb_class_type type_vars = module_type_parameters? EOS decls = top_decl* END {
-  DeclClass((typ, type_vars, decls)) |> loc_annot_decl $sloc
+  Declarations.Class((typ, type_vars, decls)) |> loc_annot_decl $sloc
 }
-| DEF id = ID COLON args = delimited(LPAREN, separated_list(COMMA, rb_class_type), RPAREN) DECL_ARR ret = ID {
-  DeclMethod(id, args, ret) |> loc_annot_decl $sloc
+| MODDEF typ = rb_class_type type_vars = module_type_parameters? EOS decls = top_decl* END {
+  Declarations.Module((typ, type_vars, decls)) |> loc_annot_decl $sloc
+}
+| DEF id = ID COLON args = delimited(LPAREN, separated_list(COMMA, rb_class_type), RPAREN) DECL_ARR r = ID {
+  let open Declarations in
+  let typed_args = List.map (fun x -> Type x) args in
+  Method(id, typed_args, Type r) |> loc_annot_decl $sloc
 }
 ;
 
@@ -348,7 +354,7 @@ module_type_parameters:
 }
 %inline module_type_parameter:
 | t = type_variable {
-  TypeVar t
+  Declarations.Type t
 }
 %inline type_variable:
 | c = rb_class_type { c }
@@ -356,3 +362,4 @@ module_type_parameters:
 
 rb_class_type:
 | c = CONST { c }
+| c = ID { c }
