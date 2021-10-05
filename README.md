@@ -46,9 +46,6 @@ foo bar do |x| # block belongs to foo, not bar!
   x.baz
 end
 
-# class inheritence
-class Foo < Bar; end
-
 # hash rockets
 { "foo" => :bar }
 

@@ -77,7 +77,7 @@ statement:
   }
   | cls = const EQ v = rhs_assign  {
     let (_, loc) = cls in
-    ExprConstAssign(cls, v) |> loc_annot_expr (loc.start_pos, loc.end_pos)
+    ExprConstAssign(cls, None, v) |> loc_annot_expr (loc.start_pos, loc.end_pos)
   }
   | p = primitive                {
     ExprValue(p) |> loc_annot_expr $sloc
@@ -196,23 +196,22 @@ class_def:
     let const = ExprConst(("<<EIGENCLASS>>", Any), []) |> loc_annot_expr $sloc in
     let empty_body = ExprEmptyBlock |> loc_annot_expr $sloc in
     let class_body = ExprClassBody(empty_body) |> loc_annot_expr $sloc in
-    ExprConstAssign(const, class_body) |> loc_annot_expr $sloc
+    ExprConstAssign(const, None, class_body) |> loc_annot_expr $sloc
   }
   | _c = CLASSDEF LSHIFT _s = SELF EOS class_body = body END {
     let const = ExprConst(("<<EIGENCLASS>>", Any), []) |> loc_annot_expr $sloc in
-    ExprConstAssign(const, class_body) |> loc_annot_expr ($startpos(_c), $endpos(_s))
+    ExprConstAssign(const, None, class_body) |> loc_annot_expr ($startpos(_c), $endpos(_s))
   }
-  // TODO unimplemented!!!
   // class x < y
-  | CLASSDEF cls = const _parent = class_inherit? EOS END {
+  | CLASSDEF cls = const parent = class_inherit? EOS END {
     let empty_body = ExprEmptyBlock |> loc_annot_expr $sloc in
     let class_body = ExprClassBody(empty_body) |> loc_annot_expr $sloc in
     let (_, loc) = cls in
-    ExprConstAssign(cls, class_body) |> loc_annot_expr ($symbolstartpos, loc.end_pos)
+    ExprConstAssign(cls, parent, class_body) |> loc_annot_expr ($symbolstartpos, loc.end_pos)
   }
-  | CLASSDEF cls = const _parent = class_inherit? EOS class_body = body END {
+  | CLASSDEF cls = const parent = class_inherit? EOS class_body = body END {
     let (_, loc) = cls in
-    ExprConstAssign(cls, class_body) |> loc_annot_expr ($symbolstartpos, loc.end_pos)
+    ExprConstAssign(cls, parent, class_body) |> loc_annot_expr ($symbolstartpos, loc.end_pos)
   }
   %inline class_inherit:
   | LESS c = const { c }
@@ -231,7 +230,7 @@ mod_def:
     let empty_body = ExprEmptyBlock |> loc_annot_expr $sloc in
     let class_body = ExprModuleBody(empty_body) |> loc_annot_expr $sloc in
     let (_, loc) = cls in
-    ExprConstAssign(cls, class_body) |> loc_annot_expr ($symbolstartpos, loc.end_pos)
+    ExprConstAssign(cls, None, class_body) |> loc_annot_expr ($symbolstartpos, loc.end_pos)
   }
   | MODDEF cls = const EOS body = nonempty_list(top_statement) END {
     let empty_body = ExprEmptyBlock |> loc_annot_expr $sloc in
@@ -240,7 +239,7 @@ mod_def:
     ) empty_body @@ List.rev body in
     let class_body = ExprModuleBody(body_expr) |> loc_annot_expr $loc(body) in
     let (_, loc) = cls in
-    ExprConstAssign(cls, class_body) |> loc_annot_expr ($symbolstartpos, loc.end_pos)
+    ExprConstAssign(cls, None, class_body) |> loc_annot_expr ($symbolstartpos, loc.end_pos)
   }
 
 primitive:

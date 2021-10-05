@@ -29,7 +29,7 @@ and 'a expr =
   | ExprIVar of 'a id
   | ExprAssign of string * 'a expression
   | ExprIVarAssign of string * 'a expression
-  | ExprConstAssign of 'a expression * 'a expression
+  | ExprConstAssign of 'a expression * 'a expression option * 'a expression (* const, superclass, body *)
   | ExprBlock of 'a expression * 'a expression
   | ExprClassBody of 'a expression
   | ExprModuleBody of 'a expression
@@ -40,17 +40,18 @@ and 'a expr =
 and 'a expression = 'a expr * 'a
 
 module Declarations = struct
-  type tclass
-  type tmodule
-  type tmethod
+  type class_
+  type module_
+  type method_
+  type type_
 
   type _ t =
-    | Class : string * string t list option * decl list -> tclass t
-    | Module : string * string t list option * decl list -> tmodule t
-    | Method : string * string t list * string t -> tmethod t
-    | Type : string -> string t
+    | Class : string * type_ t list option * decl list -> class_ t
+    | Module : string * type_ t list option * decl list -> module_ t
+    | Method : string * type_ t list * type_ t -> method_ t
+    | Type : string -> type_ t
 
-  and decl = | Decl : 'a t * Location.t -> decl
+  and decl = Decl : 'a t * Location.t -> decl
 
   let rec string_of_decl : decl -> string = fun (Decl (t, _loc)) ->
     let rec string_of_t : type a. a t -> string = function
@@ -76,8 +77,8 @@ let rec map_metadata fn expr meta =
       ExprAssign (name, swap_meta a_expr a_meta)
     | ExprIVarAssign (name, (a_expr, a_meta)) ->
       ExprIVarAssign (name, swap_meta a_expr a_meta)
-    | ExprConstAssign (cexpr, (a_expr, a_meta)) ->
-      ExprConstAssign (cexpr, swap_meta a_expr a_meta) (* todo: swap_meta cexpr? *)
+    | ExprConstAssign (cexpr, _super, (a_expr, a_meta)) ->
+      ExprConstAssign (cexpr, _super, swap_meta a_expr a_meta) (* todo: swap_meta cexpr? *)
     | ExprIVar name -> ExprIVar name
     | ExprVar name -> ExprVar name
     | ExprValue v -> ExprValue v
@@ -123,8 +124,10 @@ module AstPrinter = struct
       Printf.sprintf "(lvasgn `%s %s)" name (print_cexpr expr)
     | ExprIVarAssign (name, expr) ->
       Printf.sprintf "(ivasgn %s %s)" name (print_cexpr expr)
-    | ExprConstAssign (cexpr, expr) ->
-      Printf.sprintf "(casgn %s %s)" (print_cexpr cexpr) (print_cexpr expr)
+    | ExprConstAssign (cexpr, super, expr) -> begin match super with
+      | Some s -> Printf.sprintf "(casgn %s < %s %s)" (print_cexpr cexpr) (print_cexpr s) (print_cexpr expr)
+      | None -> Printf.sprintf "(casgn %s %s)" (print_cexpr cexpr) (print_cexpr expr)
+    end
     | ExprValue (value) ->
       Printf.sprintf "%s" (print_value value)
     | ExprBlock (expr1, expr2) ->

@@ -29,6 +29,7 @@ module RefNode = struct
     name : string;
     location : Location.t;
     reftype : reftype;
+    super : Node.t option;
     (* scope : string list; *)
   }
 
@@ -36,7 +37,9 @@ module RefNode = struct
     type t = data
     let node_type _ = "RefNode"
     let location t = t.location
-    let children _ = None
+    let children t = match t.super with
+    | None -> None
+    | Some s -> Some [s]
     let parent _ = None
     let attributes t = [
       ("name", t.name);
@@ -50,8 +53,8 @@ module RefNode = struct
   let from_data t =
     Node.Node (t, (module I))
 
-  let make name location reftype =
-    from_data { name; location; reftype }
+  let make ?(super=None) name location reftype =
+    from_data { name; location; reftype; super }
 end
 
 module CallNode = struct
@@ -207,21 +210,24 @@ let create ast =
       let value = match traverse [] expr' with
       | v :: [] -> v
       (* TODO: Constants don't need a definition *)
-      | [] -> raise (Failure (Printf.sprintf "Assignment to `%s` has no value!" name))
-      | _ :: _ -> raise (Failure "Assignment has too many nodes for value") in
+      | [] -> failwith (Printf.sprintf "Assignment to `%s` has no value!" name)
+      | _ :: _ -> failwith "Assignment has too many nodes for value" in
       let reftype = match expr with
       | ExprAssign _ -> RefNode.Local
       | ExprIVarAssign _ -> IVar
-      | _ -> raise (Failure "Unreachable") in
-      let node = (AssignmentNode.make { name; location; reftype } value) in
+      | _ -> failwith "Unreachable" in
+      let node = (AssignmentNode.make { name; location; reftype; super = None } value) in
       node :: acc
-    | ExprConstAssign ((ExprConst ((name, _), _), location'), expr') ->
+    | ExprConstAssign ((ExprConst ((name, _), _), location'), super, expr') ->
       let value = match traverse [] expr' with
       | v :: [] -> v
       (* TODO: Constants don't need a definition *)
-      | [] -> ValueNode.make Any  location' 
-      | _ :: _ -> raise (Failure "Assignment has too many nodes for value") in
-      let node = (AssignmentNode.make { name; location; reftype = Const } value) in
+      | [] -> ValueNode.make Any location' 
+      | _ :: _ -> failwith "Assignment has too many nodes for value" in
+      let s = match super with
+      | Some sup -> Some (List.hd @@ traverse [] sup)
+      | _ -> None in
+      let node = (AssignmentNode.make { name; location; reftype = Const; super = s } value) in
       node :: acc
     (* RefNode *)
     | ExprVar (name, _t) ->
@@ -270,7 +276,7 @@ let create ast =
       node :: acc
     | ExprProc _ -> acc (* TODO *)
     (* Unreachable *)
-    | ExprConstAssign _ -> raise (Failure "ConstAssign found without Const subexpr!")
+    | ExprConstAssign _ -> failwith "ConstAssign found without Const subexpr!"
     (* Skip over *)
     | ExprEmptyBlock -> acc
     in List.fold_left traverse [] ast
