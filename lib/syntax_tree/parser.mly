@@ -4,7 +4,7 @@
 %token <string> STRING
 %token TRUE FALSE NIL
 %token LBRACE RBRACE LBRACK RBRACK LPAREN RPAREN LAMBEG
-%token COLON COMMA 
+%token COLON COMMA HASHROCKET
 %token EOS EOF
 %token SELF
 %token LESS LSHIFT
@@ -297,10 +297,12 @@ call_args:
   ;
 
 obj_fields:
-  obj = separated_list(COMMA, obj_field)    { obj } ;
+  obj = separated_list(COMMA, obj_field)   { obj } ;
 
 obj_field:
-  k = primitive COLON v = primitive         { k, v } ;
+  | k = primitive COLON v = primitive         { k, v }
+  | k = primitive HASHROCKET v = primitive    { k, v }
+  | k = ID COLON v = primitive                { (Symbol k), v };
 
 list_fields:
   | vl = separated_list(COMMA, statement)     { vl } ;

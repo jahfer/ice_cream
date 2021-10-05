@@ -67,6 +67,7 @@ rule read_ruby state = parse
   | '"'      { ack_tok state; read_string (Buffer.create 17) lexbuf }
   | "::"     { ack_tok state; NAMESPACE }
   | "<<"     { ack_tok state; LSHIFT }
+  | "=>"     { ack_tok state; HASHROCKET }
   | ':'      { ack_tok state; COLON }
   | ','      { ack_tok state; COMMA }
   | '|'      { ack_tok state; PIPE }

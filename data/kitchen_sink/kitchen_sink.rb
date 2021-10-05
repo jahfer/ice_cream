@@ -10,6 +10,11 @@ params = {
   "another": "value"
 }
 
+old_hash = {
+  "foo" => true,
+  "another" => "value"
+}
+
 @x = :my_symbol
 @x
 

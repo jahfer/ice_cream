@@ -46,9 +46,6 @@ foo bar do |x| # block belongs to foo, not bar!
   x.baz
 end
 
-# hash rockets
-{ "foo" => :bar }
-
 # operators
 x | 0
 a + b
