@@ -24,8 +24,8 @@ There's even some kind of error messaging!
 # curly-braced do-blocks 
 foo { |x| x.bar }
 
-# method assignment
-x.foo = bar
+# object method calls without parens
+x.foo true
 
 # array/hash assignment
 hash[:foo] = bar

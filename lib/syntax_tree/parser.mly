@@ -143,8 +143,11 @@ command:
 
 call_op: DOT { } ;
 
-method_call:
-  id = METHOD { id } ;
+method_call: id = METHOD eq = EQ? {
+  match eq with
+  | Some _ -> id ^ "="
+  | None -> id
+};
 
 command_args:
   args = call_args { args } ;

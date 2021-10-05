@@ -87,3 +87,7 @@ end
 y.each_with_object({}) do |x, hash|
   hash[x]
 end
+
+# z.without_parens n ## FAILURE
+
+r.foo = (true)
