@@ -3,7 +3,7 @@
 ### Todo List
 
 - [x] Ruby parser
-- [-] Parse RBS files to build library of type interfaces
+- [ ] Parse RBS files to build library of type interfaces
 - [ ] Compute algebraic subtyping annotations (+/- flows)
 - [ ] Apply constraints to type annotations
 
