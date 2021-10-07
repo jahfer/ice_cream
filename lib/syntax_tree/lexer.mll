@@ -98,7 +98,7 @@ rule read_ruby state = parse
   | ivar     { terminating_tok state; IVAR (Lexing.lexeme lexbuf) }
   | id as i '[' {
     newline_agnostic_tok state;
-    ARR_ACCESS_ID (i)
+    ARR_IDX (i)
   }
   | id       {
     terminating_tok state;

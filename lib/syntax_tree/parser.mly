@@ -8,7 +8,7 @@
 %token EOS EOF
 %token SELF
 %token LESS LSHIFT
-%token <string> ID METHOD IVAR ARR_ACCESS_ID
+%token <string> ID METHOD IVAR ARR_IDX
 %token <string> CONST
 %token EQ DEF END LAMBDA DOT CLASSDEF MODDEF PIPE
 %token DO 
@@ -135,10 +135,15 @@ command:
   | cst = const call_op c2 = method_call args = command_args {
     ExprCall(cst, c2, args) |> loc_annot_expr $sloc
   }
-  | c1 = ARR_ACCESS_ID arg = statement RBRACK {
+  | c1 = ARR_IDX idx = statement RBRACK a = asgn? {
+    let (meth, args) = match a with
+    | Some v -> "[]=", (idx :: [v])
+    | None -> "[]", [idx] in
     let sub_expr = ExprVar((c1, Any)) |> loc_annot_expr $loc(c1) in
-    ExprCall(sub_expr, "[]", ([arg], None)) |> loc_annot_expr $sloc
+    ExprCall(sub_expr, meth, (args, None)) |> loc_annot_expr $sloc
   }
+  %inline asgn:
+  | a = preceded(EQ, statement) { a }
   ;
 
 call_op: DOT { } ;

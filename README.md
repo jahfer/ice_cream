@@ -2,20 +2,45 @@
 
 ### Todo List
 
-- [x] Parser
+- [x] Ruby parser
+- [-] Parse RBS files to build library of type interfaces
 - [ ] Compute algebraic subtyping annotations (+/- flows)
-- [ ] Parse RBS files to build library of type interfaces
 - [ ] Apply constraints to type annotations
-- [ ] ????
-- [ ] Solve! 💰
 
-### Current Status: Parsing (mostly) works!
+### Current Status
 
-There's even some kind of error messaging! 
+#### Parsing _(kinda-sorta)_ works!
 
-![Error messages](https://github.com/jahfer/ice_cream/blob/main/images/errors.png)
+```sh
+$ make build
+dune build bin/cli.exe
 
-#### Unsupported Syntax (for now)
+$ make run
+OCAMLRUNPARAM=b dune exec bin/cli.exe -- --dir=data/example
+Importing file:  `data/example/example.rb`
+Importing file:  `data/example/rbs/example.rbs`
+...
+```
+
+#### There's even some poor error messaging! 
+
+![Error messages](images/errors.png)
+
+#### …and support for RBS!
+
+```sh
+$ make build
+dune build bin/cli.exe
+
+$ make check
+OCAMLRUNPARAM=b dune exec bin/cli.exe -- --dir=data/example --check
+Importing file:  `data/example/rbs/example.rbs`
+class Example #empty? (bool) -> bool
+```
+
+#### (Un)Supported Syntax
+
+See [Kitchen Sink demo](data/kitchen_sink/kitchen_sink.rb) for supported syntax, but this is a non-exhaustive rough list of what doesn't work yet:
 
 ```ruby
 # string interpolation
@@ -26,9 +51,6 @@ foo { |x| x.bar }
 
 # object method calls without parens
 x.foo true
-
-# array/hash assignment
-hash[:foo] = bar
 
 # heredoc
 <<~MSG
@@ -46,6 +68,11 @@ foo bar do |x| # block belongs to foo, not bar!
   x.baz
 end
 
+# trailing commas
+{ 
+  foo: :bar,
+}
+
 # operators
 x | 0
 a + b
@@ -53,7 +80,13 @@ a + b
 # ...and a lot more!
 ```
 
-#### Input
+### Examples
+
+#### AST Generation
+
+<details>
+<summary>Input</summary>
+
 ```ruby
 module ChatApp
   VERSION = "1.0.0"
@@ -101,9 +134,11 @@ module ChatApp
   end
 end
 ```
+</details>
 
+<details>
+<summary>Output</summary>
 
-#### Output
 ```clj
 (casgn 
     (const 
@@ -193,12 +228,13 @@ end
                 ())) 
         ()))
 ```
+</details>
 
-#### Index Querying
-
-**OCaml Script**
+#### Queries
 
 ```ocaml
+(* my_ast_query.ml *)
+
 let index = Ast_index.create ast in
   index
   |> Query.query_all ~f:(fun node ->
@@ -218,7 +254,9 @@ let index = Ast_index.create ast in
   );
 ```
 
-**Output**
+<details>
+<summary>Output</summary>
+
 ```xml
 ==========================
 # Original code:
@@ -341,3 +379,4 @@ def mixed_args: (untyped foo, ?Integer bar, baz?: Any?) -> untyped
 
 ==========================
 ```
+</details>

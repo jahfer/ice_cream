@@ -6,12 +6,12 @@ attr_reader :bar
 # comment
 
 params = {
-  "key": true,
+  # key: true,
   "another": "value"
 }
 
 old_hash = {
-  "foo" => true,
+  # :foo => true,
   "another" => "value"
 }
 
@@ -93,6 +93,35 @@ y.each_with_object({}) do |x, hash|
   hash[x]
 end
 
-# z.without_parens n ## FAILURE
-
 r.foo = (true)
+
+hash[:foo] = bar
+
+## ---------- FAILURES ----------
+
+# z.without_parens n
+
+# "Hello, #{name}" 
+
+# foo { |x| x.bar }
+
+# x.foo true
+
+# <<~MSG
+# Hello, name!
+# MSG
+
+# <<~MSG.trim
+# Hello
+# world!
+# MSG
+
+# { 
+#   foo: :bar,
+# }
+
+# x | 0
+
+# a + b
+
+x

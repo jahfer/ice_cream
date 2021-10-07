@@ -73,7 +73,7 @@ module CallNode = struct
     let node_type _ = "CallNode"
     let location t = t.location
     let children t = match t.receiver with
-    | Some node -> Some (node :: positional_args t.args)
+    | Some node -> Some (node :: (List.rev @@ positional_args t.args))
     | None -> Some (positional_args t.args)
     let parent _ = None
     let attributes t = [
