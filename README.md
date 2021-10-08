@@ -22,10 +22,6 @@ Importing file:  `data/example/rbs/example.rbs`
 ...
 ```
 
-#### There's even some poor error messaging! 
-
-![Error messages](images/errors.png)
-
 #### …and support for RBS!
 
 ```sh
@@ -37,6 +33,10 @@ OCAMLRUNPARAM=b dune exec bin/cli.exe -- --dir=data/example --check
 Importing file:  `data/example/rbs/example.rbs`
 class Example #empty? (bool) -> bool
 ```
+
+#### There's even some error messaging! 
+
+![Error messages](images/errors.png)
 
 #### (Un)Supported Syntax
 
@@ -76,8 +76,6 @@ end
 # operators
 x | 0
 a + b
-
-# ...and a lot more!
 ```
 
 ### Examples
@@ -136,7 +134,7 @@ end
 ```
 </details>
 
-<details>
+<details open=true>
 <summary>Output</summary>
 
 ```clj
@@ -230,7 +228,10 @@ end
 ```
 </details>
 
-#### Queries
+#### API
+
+<details open=true>
+<summary>Script</summary>
 
 ```ocaml
 (* my_ast_query.ml *)
@@ -253,6 +254,7 @@ let index = Ast_index.create ast in
     print_endline "\n==========================\n";
   );
 ```
+</details>
 
 <details>
 <summary>Output</summary>
