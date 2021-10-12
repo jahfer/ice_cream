@@ -1,3 +1,4 @@
 class Example
-  def empty?: (bool) -> bool
+  def empty?: () -> bool
+  # def mixed_args: (untyped foo, ?Integer bar, baz?: Any?) -> untyped
 end

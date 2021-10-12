@@ -155,6 +155,7 @@ and read_rbs state = parse
   | '('      { newline_agnostic_tok state; LPAREN }
   | ']'      { terminating_tok state;      RBRACK }
   | ')'      { terminating_tok state;      RPAREN }
+  | '#'      { comment state lexbuf }
   | const    { terminating_tok state; CONST (Lexing.lexeme lexbuf) }
   | id       { terminating_tok state; ID (Lexing.lexeme lexbuf) }
   | _        { raise (SyntaxError (sprintf "Unexpected char: '%s'" (Lexing.lexeme lexbuf))) }

@@ -56,8 +56,9 @@ module Declarations = struct
   let rec string_of_decl : decl -> string = fun (Decl (t, _loc)) ->
     let rec string_of_t : type a. a t -> string = function
     | Class (name, _tvars, body) ->
-      Printf.sprintf "class %s %s" name (String.concat "\n└── " @@ List.map string_of_decl body)
-    | Module (name, _tvars, _body) -> name
+      Printf.sprintf "class %s\n  %s" name (String.concat "\n" @@ List.map string_of_decl body)
+    | Module (name, _tvars, body) -> 
+      Printf.sprintf "module %s\n  %s" name (String.concat "\n" @@ List.map string_of_decl body)
     | Method (name, args, return) ->
       Printf.sprintf "#%s (%s) -> %s" name (String.concat "," @@ List.map string_of_t args) (string_of_t return)
     | Type t -> t
@@ -100,7 +101,6 @@ let rec map_metadata fn expr meta =
 
 module AstPrinter = struct
   let rec print_cexpr (expr, _) =
-    (* printf "%s\n" Location.print_loc expr_loc; *)
     Printf.sprintf "%s" (print_ast expr)
 
   and print_ast = function

@@ -230,8 +230,10 @@ end
 
 #### API
 
+The following examples use [kitchen_sink.rb](data/kitchen_sink/kitchen_sink.rb)
+
 <details open=true>
-<summary>Script</summary>
+<summary>Basic Script</summary>
 
 ```ocaml
 (* my_ast_query.ml *)
@@ -380,5 +382,65 @@ def mixed_args: (untyped foo, ?Integer bar, baz?: Any?) -> untyped
 </MethodNode>
 
 ==========================
+```
+</details>
+
+<details open=true>
+<summary>Advanced Script</summary>
+
+This script locates all method definitions (`def foo ...`), then traverses their bodies to locate all places the method's parameters are used.
+
+```ocaml
+(* my_ast_query.ml *)
+
+let index = Ast_index.create ast in
+  index
+  |> Query.query_all ~flatten:true ~f:(Query.is_a Ast_index.Method)
+  |> tap (fun _ -> print_endline "")
+  |> List.iter (fun node ->
+    let open Node.Attr in
+    
+    let method_name = match (Node.attributes node) |> List.assoc_opt "name" with
+    | Some Str_ s -> s
+    | _ -> failwith "Unreachable!" in
+
+    let ref_names = match (Node.attributes node) |> List.assoc_opt "parameters" with
+    | Some List_ l -> List.filter_map (function | Str_ s -> Some s | _ -> None) l
+    | _ -> [] in
+
+    let usages = (Node.children node)
+    |> Option.get
+    |> Query.query_all ~flatten:true ~f:(Query.is_a Ast_index.Ref)
+    |> List.filter (fun x -> match (Node.attributes x) |> List.assoc_opt "name" with
+    | Some (Str_ name) -> List.mem name ref_names
+    | Some _ -> failwith "Unreachable!"
+    | None -> false) in
+    
+    List.iter (fun x -> 
+      match (Node.attributes x) |> List.assoc_opt "name" with
+      | Some (Str_ name) ->
+        Printf.printf "In method `#%s`, param `%s` used at: %s\n%s"
+          method_name
+          name
+          (Location.loc_as_docstr (Node.location x))
+          (Location.loc_as_string (Node.location x))
+      | _ -> failwith "Unreachable!"
+    ) usages
+  );
+```
+</details>
+
+<details open=true>
+<summary>Output</summary>
+
+```
+In method `#sum1`, param `thing` used at: data/kitchen_sink/kitchen_sink.rb:84:5
+     ...
+    84|     thing.call(some)
+      |     ^^^^^
+In method `#sum1`, param `some` used at: data/kitchen_sink/kitchen_sink.rb:84:16
+     ...
+    84|     thing.call(some)
+      |                ^^^^
 ```
 </details>

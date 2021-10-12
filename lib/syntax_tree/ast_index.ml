@@ -1,3 +1,10 @@
+type Node.nodetype += Value
+type Node.nodetype += Ref
+type Node.nodetype += Call
+type Node.nodetype += Method
+type Node.nodetype += Scoping
+type Node.nodetype += Assignment
+
 module ValueNode = struct
   type data = {
     value : Location.t Ast.value;
@@ -6,13 +13,14 @@ module ValueNode = struct
 
   module I = Node.Make(struct
     type t = data
-    let node_type _ = "ValueNode"
+    let node_type _ = Value
     let location t = t.location
     let children _ = None
     let parent _ = None
-    let attributes t = [
-      ("type", Ast.AstPrinter.print_value_type t.value);
-      ("value", Ast.AstPrinter.print_value t.value)
+    let attributes t = let open Node.Attr in [
+      ("type", Str_ (Ast.AstPrinter.print_value_type t.value));
+      ("value", Str_ (Ast.AstPrinter.print_value t.value));
+      ("node_type", Str_ "Value");
     ]
 
     let to_rbs _ = ""
@@ -35,14 +43,15 @@ module RefNode = struct
 
   module I = Node.Make(struct
     type t = data
-    let node_type _ = "RefNode"
+    let node_type _ = Ref
     let location t = t.location
     let children t = match t.super with
     | None -> None
     | Some s -> Some [s]
     let parent _ = None
-    let attributes t = [
-      ("name", t.name);
+    let attributes t = let open Node.Attr in [
+      ("name", Str_ t.name);
+      ("node_type", Str_ "Ref");
     ]
 
     let to_rbs t = match t.reftype with
@@ -70,15 +79,20 @@ module CallNode = struct
 
     let positional_args (p, _) = p
 
-    let node_type _ = "CallNode"
+    let node_type _ = Call
     let location t = t.location
     let children t = match t.receiver with
     | Some node -> Some (node :: (List.rev @@ positional_args t.args))
     | None -> Some (positional_args t.args)
     let parent _ = None
-    let attributes t = [
-      ("method", t.method_name);
-    ]
+    let attributes t = let open Node.Attr in
+    let attrs = [
+      ("method", Str_ t.method_name);
+      ("node_type", Str_ "Call");
+    ] in 
+    match t.receiver with
+    | Some r -> ("receiver", Node.Node_ r) :: attrs
+    | None -> attrs
 
     let to_rbs _ = ""
   end)
@@ -95,14 +109,18 @@ module MethodNode = struct
     children : Node.t list;
   }
 
+  type Node.Attr.t += private MethodAttribute
+
   module I = Node.Make(struct
     type t = data
-    let node_type _ = "MethodNode"
+    let node_type _ = Method
     let location t = t.location
     let children t = Some(t.children)
     let parent _ = None
-    let attributes t = [
-      ("name", t.name)
+    let attributes t = let open Node.Attr in [
+      ("name", Str_ t.name);
+      ("node_type", Str_ "Method");
+      ("parameters", List_ (List.map (fun ((name, _t), _argt) -> Str_ name) t.args))
     ]
 
     let to_rbs t =
@@ -145,18 +163,19 @@ module ScopingNode = struct
     scope : scope;
   }
 
-  let scope_as_str = function
+  let scope_as_str_ = function
   | Module -> "module"
   | Class -> "class"
 
   module I = Node.Make(struct
     type t = data
-    let node_type _ = "ScopingNode"
+    let node_type _ = Scoping
     let location t = t.location
     let children t = Some(t.children)
     let parent _ = None
-    let attributes t = [
-      ("type", scope_as_str t.scope)
+    let attributes t = let open Node.Attr in [
+      ("type", Str_ (scope_as_str_ t.scope));
+      ("node_type", Str_ "Scoping");
     ]
 
     let to_rbs _= ""
@@ -177,17 +196,18 @@ module AssignmentNode = struct
 
   module I = Node.Make(struct
     type t = data
-    let node_type _t = "AssignmentNode"
+    let node_type _t = Assignment
     let location t = t.target.location
     let children t = Some ((RefNode.from_data t.target) :: [t.value])
     let parent _ = None
-    let attributes t = [
-      ("label", t.target.name)
+    let attributes t = let open Node.Attr in [
+      ("label", Str_ t.target.name);
+      ("node_type", Str_ "Assignment");
     ]
 
     (* let to_rbs t = match t.target.reftype with
     | Const -> match Node.node_type t.value with
-      | "ScopingNode" -> Printf.sprintf "%s %s" t.target.name t.attributes
+      | "Scoping" -> Printf.sprintf "%s %s" t.target.name t.attributes
       | _ -> raise (Failure "Unimplemented")
     | _ -> "" *)
 

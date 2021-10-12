@@ -80,8 +80,8 @@ module M1
 end
 
 class Foo::Bar
-  def sum1(thing)
-    45
+  def sum1(some, thing)
+    thing.call(some)
   end
 
   class << self

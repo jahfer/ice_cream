@@ -14,8 +14,6 @@ let get_declarations (environment : t) = environment.declarations
 
 let make () = { ast = []; declarations = []; }
 
-type lex_state = Lexer.lex_ruby_state
-
 let init_state () : lex_ruby_state = {
   pending_termination = false;
   at_eos = false;

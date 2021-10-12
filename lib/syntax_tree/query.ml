@@ -18,3 +18,5 @@ let query ~f ?flatten:(flatten=false) all =
   match result () with
   | Cons (x, _) -> Some x
   | Nil -> None
+
+let is_a t = (fun node -> (Node.node_type node) = t)
