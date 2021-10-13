@@ -1,9 +1,11 @@
-type Node.nodetype += Value
-type Node.nodetype += Ref
-type Node.nodetype += Call
-type Node.nodetype += Method
-type Node.nodetype += Scoping
-type Node.nodetype += Assignment
+module Type = struct
+  type Node.nodetype += Value
+  type Node.nodetype += Ref
+  type Node.nodetype += Call
+  type Node.nodetype += Method
+  type Node.nodetype += Scoping
+  type Node.nodetype += Assignment
+end
 
 module ValueNode = struct
   type data = {
@@ -13,7 +15,7 @@ module ValueNode = struct
 
   module I = Node.Make(struct
     type t = data
-    let node_type _ = Value
+    let node_type _ = Type.Value
     let location t = t.location
     let children _ = None
     let parent _ = None
@@ -43,7 +45,7 @@ module RefNode = struct
 
   module I = Node.Make(struct
     type t = data
-    let node_type _ = Ref
+    let node_type _ = Type.Ref
     let location t = t.location
     let children t = match t.super with
     | None -> None
@@ -79,7 +81,7 @@ module CallNode = struct
 
     let positional_args (p, _) = p
 
-    let node_type _ = Call
+    let node_type _ = Type.Call
     let location t = t.location
     let children t = match t.receiver with
     | Some node -> Some (node :: (List.rev @@ positional_args t.args))
@@ -113,7 +115,7 @@ module MethodNode = struct
 
   module I = Node.Make(struct
     type t = data
-    let node_type _ = Method
+    let node_type _ = Type.Method
     let location t = t.location
     let children t = Some(t.children)
     let parent _ = None
@@ -169,7 +171,7 @@ module ScopingNode = struct
 
   module I = Node.Make(struct
     type t = data
-    let node_type _ = Scoping
+    let node_type _ = Type.Scoping
     let location t = t.location
     let children t = Some(t.children)
     let parent _ = None
@@ -196,7 +198,7 @@ module AssignmentNode = struct
 
   module I = Node.Make(struct
     type t = data
-    let node_type _t = Assignment
+    let node_type _t = Type.Assignment
     let location t = t.target.location
     let children t = Some ((RefNode.from_data t.target) :: [t.value])
     let parent _ = None

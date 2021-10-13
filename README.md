@@ -232,201 +232,120 @@ end
 
 The following examples use [kitchen_sink.rb](data/kitchen_sink/kitchen_sink.rb)
 
+##### Basic Script
+
 <details open=true>
-<summary>Basic Script</summary>
+<summary>Script</summary>
 
 ```ocaml
-(* my_ast_query.ml *)
+(* basic_ast_query.ml *)
 
-let index = Ast_index.create ast in
-  index
-  |> Query.query_all ~f:(fun node ->
-    (Node.node_type node) = "MethodNode"
-  )
-  |> List.iter (fun node ->
-    print_endline @@ "# Original code:";
-    print_endline @@ Location.loc_as_string (Node.location node);
+let ast_index = Ast_index.create in
 
-    print_endline @@ "# RBS:";
-    print_endline @@ Node.to_rbs node;
+ast_index
+|> Query.(query_all ~f:(is_a Method)) ~flatten:true
+|> List.iter (fun node ->
+  print_endline @@ "# Original code:";
+  print_endline @@ Location.loc_as_string (Node.location node);
 
-    print_endline @@ "\n# AST node:";
-    print_endline @@ Node.pretty_print node;
-    
-    print_endline "\n==========================\n";
-  );
+  print_endline @@ "# RBS:";
+  print_endline @@ Node.to_rbs node;
+
+  print_endline @@ "\n# AST node:";
+  print_endline @@ Node.pretty_print node;
+  
+  print_endline "\n==========================\n";
+);
 ```
 </details>
 
 <details>
 <summary>Output</summary>
 
-```xml
-==========================
+```clj
 # Original code:
      ...
-    23| def sum0; false end
-      | ^^^^^^^^
+     1| class Example
+      | ^^^^^^^^^^^^^
 
 # RBS:
-def sum0: () -> untyped
+
 
 # AST node:
-<MethodNode name="sum0">
-  <ValueNode type="bool" value="false" />
-</MethodNode>
-
-==========================
-
-# Original code:
-     ...
-    25| def sum1(); true end
-      | ^^^^^^^^^^
-
-# RBS:
-def sum1: () -> untyped
-
-# AST node:
-<MethodNode name="sum1">
-  <ValueNode type="bool" value="true" />
-</MethodNode>
+(Assignment (:label Example) (:node_type Assignment)
+  (Ref (:name Example) (:node_type Ref))
+  (Scoping (:type class) (:node_type Scoping)
+    (Method (:name empty?) (:node_type Method) (:parameters [])
+      (Value (:type bool) (:value true) (:node_type Value)))
+    (Method (:name thing) (:node_type Method) (:parameters [x])
+      (Call (:receiver (Ref (:name x) (:node_type Ref))) (:method foo) (:node_type Call)
+        (Ref (:name x) (:node_type Ref))))))
 
 ==========================
 
 # Original code:
      ...
-    27| def sum2(thing)
-      | ^^^^^^^^^^^^^^^
+     2|   def empty?
+      |   ^^^^^^^^^^
 
 # RBS:
-def sum2: (untyped thing) -> untyped
+def empty?: () -> untyped
 
 # AST node:
-<MethodNode name="sum2">
-  <ValueNode type="Integer" value="45" />
-</MethodNode>
+(Method (:name empty?) (:node_type Method) (:parameters [])
+  (Value (:type bool) (:value true) (:node_type Value)))
 
 ==========================
 
 # Original code:
      ...
-    31| def sum3(thing1, thing2) end
-      | ^^^^^^^^^^^^^^^^^^^^^^^^
+     6|   def thing(x)
+      |   ^^^^^^^^^^^^
 
 # RBS:
-def sum3: (untyped thing1, untyped thing2) -> untyped
+def thing: (untyped x) -> untyped
 
 # AST node:
-<MethodNode name="sum3">
-  <ValueNode type="NilClass" value="nil" />
-</MethodNode>
-
-==========================
-
-# Original code:
-     ...
-    33| def maybe_sum(a, b, should_do_thing) end
-      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-# RBS:
-def maybe_sum: (untyped a, untyped b, untyped should_do_thing) -> untyped
-
-# AST node:
-<MethodNode name="maybe_sum">
-  <ValueNode type="NilClass" value="nil" />
-</MethodNode>
-
-==========================
-
-# Original code:
-     ...
-    35| def named_args(foo: true, bar: 3) end
-      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-# RBS:
-def named_args: (?foo: bool, ?bar: Integer) -> untyped
-
-# AST node:
-<MethodNode name="named_args">
-  <ValueNode type="NilClass" value="nil" />
-</MethodNode>
-
-==========================
-
-# Original code:
-     ...
-    36| def default_args(x, foo = true, bar = false) end
-      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-# RBS:
-def default_args: (untyped x, ?bool foo, ?bool bar) -> untyped
-
-# AST node:
-<MethodNode name="default_args">
-  <ValueNode type="NilClass" value="nil" />
-</MethodNode>
-
-==========================
-
-# Original code:
-     ...
-    37| def mixed_args(foo, bar = 3, baz: nil) end
-      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-# RBS:
-def mixed_args: (untyped foo, ?Integer bar, baz?: Any?) -> untyped
-
-# AST node:
-<MethodNode name="mixed_args">
-  <ValueNode type="NilClass" value="nil" />
-</MethodNode>
+(Method (:name thing) (:node_type Method) (:parameters [x])
+  (Call (:receiver (Ref (:name x) (:node_type Ref))) (:method foo) (:node_type Call)
+    (Ref (:name x) (:node_type Ref))))
 
 ==========================
 ```
 </details>
 
-<details open=true>
-<summary>Advanced Script</summary>
+##### Advanced Script
 
 This script locates all method definitions (`def foo ...`), then traverses their bodies to locate all places the method's parameters are used.
 
+<details open=true>
+<summary>Script</summary>
+
 ```ocaml
-(* my_ast_query.ml *)
+(* advanced_ast_query.ml *)
+let ast_index = Ast_index.create in
 
-let index = Ast_index.create ast in
-  index
-  |> Query.query_all ~flatten:true ~f:(Query.is_a Ast_index.Method)
-  |> tap (fun _ -> print_endline "")
-  |> List.iter (fun node ->
-    let open Node.Attr in
-    
-    let method_name = match (Node.attributes node) |> List.assoc_opt "name" with
-    | Some Str_ s -> s
-    | _ -> failwith "Unreachable!" in
+ast_index
+|> Query.(query_all ~f:(is_a Method)) ~flatten:true
+|> List.iter @@ fun node ->
+  let method_name = Query.string_attr "name" node
+  and param_names = Query.string_list_attr "parameters" node in
 
-    let ref_names = match (Node.attributes node) |> List.assoc_opt "parameters" with
-    | Some List_ l -> List.filter_map (function | Str_ s -> Some s | _ -> None) l
-    | _ -> [] in
+  let usages = node
+  |> Node.children
+  |> Option.get
+  |> Query.(query_all ~f:(is_a Ref)) ~flatten:true
+  |> List.filter @@ fun n ->
+    List.mem (Query.string_attr "name" n) param_names in
 
-    let usages = (Node.children node)
-    |> Option.get
-    |> Query.query_all ~flatten:true ~f:(Query.is_a Ast_index.Ref)
-    |> List.filter (fun x -> match (Node.attributes x) |> List.assoc_opt "name" with
-    | Some (Str_ name) -> List.mem name ref_names
-    | Some _ -> failwith "Unreachable!"
-    | None -> false) in
-    
-    List.iter (fun x -> 
-      match (Node.attributes x) |> List.assoc_opt "name" with
-      | Some (Str_ name) ->
-        Printf.printf "In method `#%s`, param `%s` used at: %s\n%s"
-          method_name
-          name
-          (Location.loc_as_docstr (Node.location x))
-          (Location.loc_as_string (Node.location x))
-      | _ -> failwith "Unreachable!"
-    ) usages
-  );
+  List.iter (fun n -> 
+    let name = Query.string_attr "name" n in
+    Printf.printf "In method `#%s`, param `%s` used:\n%s\n%s\n"
+      method_name
+      name
+      (Location.loc_as_docstr (Node.location n))
+      (Location.loc_as_string (Node.location n))
+  ) usages
 ```
 </details>
 
@@ -434,11 +353,14 @@ let index = Ast_index.create ast in
 <summary>Output</summary>
 
 ```
-In method `#sum1`, param `thing` used at: data/kitchen_sink/kitchen_sink.rb:84:5
+In method `#sum1`, param `thing` used:
+data/kitchen_sink/kitchen_sink.rb:84:5
      ...
     84|     thing.call(some)
       |     ^^^^^
-In method `#sum1`, param `some` used at: data/kitchen_sink/kitchen_sink.rb:84:16
+
+In method `#sum1`, param `some` used:
+data/kitchen_sink/kitchen_sink.rb:84:16
      ...
     84|     thing.call(some)
       |                ^^^^
