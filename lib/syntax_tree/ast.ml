@@ -16,9 +16,9 @@ and 'a id = string * 'a value
 
 and 'a nesting = 'a id list
 
-and 'a call_args = 'a expression list * 'a expression option (* positional args, block *)
+and 'a call_args = 'a expression list * 'a expression option (* args, block *)
 
-and 'a method_args = ('a id * arg_type) list
+and 'a method_args = (string * 'a expr option * arg_type) list
 
 and 'a expr =
   | ExprCall of 'a expression * string * 'a call_args (* receiver, method, args *)
@@ -169,7 +169,7 @@ module AstPrinter = struct
     let buf = Buffer.create 256 in
     if List.length(arr) > 0 then (
       Buffer.add_string buf "(params";
-      List.iteri (fun _i ((id, _value), _param_type) ->
+      List.iteri (fun _i (id, _default, _param_type) ->
         Buffer.add_string buf " ";
         Printf.bprintf buf "(param `%s)" id)
         arr;

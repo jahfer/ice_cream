@@ -1,10 +1,5 @@
 module Type = struct
-  type Node.nodetype += Value
-  type Node.nodetype += Ref
-  type Node.nodetype += Call
-  type Node.nodetype += Method
-  type Node.nodetype += Scoping
-  type Node.nodetype += Assignment
+  type Node.nodetype += Value | Ref | Call | Method | Scoping | Assignment
 end
 
 module ValueNode = struct
@@ -122,7 +117,7 @@ module MethodNode = struct
     let attributes t = let open Node.Attr in [
       ("name", Str_ t.name);
       ("node_type", Str_ "Method");
-      ("parameters", List_ (List.map (fun ((name, _t), _argt) -> Str_ name) t.args))
+      ("parameter_names", List_ (List.map (fun (name, _default, _argt) -> Str_ name) t.args))
     ]
 
     let to_rbs t =
@@ -130,26 +125,33 @@ module MethodNode = struct
         String.concat ", " @@
           List.map (fun (s, t) ->
             match t with
-            | Ast.Nil -> Printf.sprintf "?Any? %s" s
-            | Any -> Printf.sprintf "untyped %s" s
-            | _ -> Printf.sprintf "?%s %s" (Ast.AstPrinter.print_value_type t) s) x in
+            | Some Ast.(ExprValue Nil) -> Printf.sprintf "?Any? %s" s
+            | Some Ast.(ExprValue Any) -> Printf.sprintf "untyped %s" s
+            | Some Ast.ExprValue v -> Printf.sprintf "?%s %s" (Ast.AstPrinter.print_value_type v) s
+            | None -> Printf.sprintf "%s" s
+            | _ -> Printf.sprintf "?%s: TODO" s) x in
 
       let print_kwarg = fun x ->
         String.concat ", " @@
           List.map (fun (s, t) ->
             match t with
-            | Ast.Nil -> Printf.sprintf "%s?: Any?" s
-            | Any -> Printf.sprintf "%s: untyped" s
-            | _ -> Printf.sprintf "?%s: %s" s (Ast.AstPrinter.print_value_type t)) x in
+            | Some Ast.(ExprValue Nil) -> Printf.sprintf "%s?: Any?" s
+            | Some Ast.(ExprValue Any) -> Printf.sprintf "%s: untyped" s
+            | Some Ast.ExprValue v -> Printf.sprintf "?%s: %s" s (Ast.AstPrinter.print_value_type v)
+            | None -> Printf.sprintf "%s" s
+            | _ -> Printf.sprintf "?%s: TODO" s) x in
 
       let params = match List.partition_map
-        (fun (p, typ) -> match typ with | Ast.Positional -> Left p | Keyword -> Right p)
-        t.args with
-        | [], [] -> Printf.sprintf ""
-        | pos, [] -> (print_positional pos)
-        | [], kwarg ->  (print_kwarg kwarg)
-        | pos, kwarg -> Printf.sprintf "%s, %s" (print_positional pos) (print_kwarg kwarg) in
-        Printf.sprintf "def %s: (%s) -> %s" t.name params "untyped"
+        (fun (name, default, arg_t) ->
+          let param = (name, default) in
+          match arg_t with | Ast.Positional -> Left param | Keyword -> Right param)
+        t.args 
+      with
+      | [], [] -> Printf.sprintf ""
+      | pos, [] -> (print_positional pos)
+      | [], kwarg ->  (print_kwarg kwarg)
+      | pos, kwarg -> Printf.sprintf "%s, %s" (print_positional pos) (print_kwarg kwarg) in
+      Printf.sprintf "def %s: (%s) -> %s" t.name params "untyped"
   end)
 
   let make name args location children =
@@ -202,8 +204,7 @@ module AssignmentNode = struct
     let location t = t.target.location
     let children t = Some ((RefNode.from_data t.target) :: [t.value])
     let parent _ = None
-    let attributes t = let open Node.Attr in [
-      ("label", Str_ t.target.name);
+    let attributes _t = let open Node.Attr in [
       ("node_type", Str_ "Assignment");
     ]
 

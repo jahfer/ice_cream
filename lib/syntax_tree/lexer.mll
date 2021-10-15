@@ -115,7 +115,11 @@ rule read_ruby state = parse
 and comment state = parse
 | newline {
   Lexing.new_line lexbuf;
-  read_ruby state lexbuf
+  if state.pending_termination || state.at_eos then
+    read_ruby state lexbuf
+  else begin
+    state.at_eos <- true; EOS
+  end
 }
 | _ { comment state lexbuf }
 

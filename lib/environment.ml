@@ -16,7 +16,7 @@ let make () = { ast = []; declarations = []; }
 
 let init_state () : lex_ruby_state = {
   pending_termination = false;
-  at_eos = false;
+  at_eos = true;
   paren_level = 0;
   lambda_stack = [];
   fn_call = false;

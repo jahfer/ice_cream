@@ -85,7 +85,7 @@ statement:
   | c = class_def                { c }
   | m = mod_def                  { m }
   | e = expr                     { e }
-  | c = const                   { c }
+  | c = const                    { c }
   ;
 
 rhs_assign:
@@ -132,6 +132,10 @@ command:
     let sub_expr = ExprVar((c1, Any)) |> loc_annot_expr $loc(c1) in
     ExprCall(sub_expr, c2, args) |> loc_annot_expr $sloc
   }
+  | c1 = IVAR call_op c2 = method_call args = command_args {
+    let sub_expr = ExprVar((c1, Any)) |> loc_annot_expr $loc(c1) in
+    ExprCall(sub_expr, c2, args) |> loc_annot_expr $sloc
+  }
   | cst = const call_op c2 = method_call args = command_args {
     ExprCall(cst, c2, args) |> loc_annot_expr $sloc
   }
@@ -159,14 +163,14 @@ command_args:
 
 block_args:
   PIPE p = separated_list(COMMA, ID) PIPE { 
-    List.map (fun x -> ((x, Any), Ast.Positional)) p
+    List.map (fun x -> (x, None, Ast.Positional)) p
   }
 
 iv_identifier:
   iv = IVAR { iv, Any } ;
 
 func:
-  | DEF fn = ID args = fn_args? EOS? END {
+  | DEF fn = method_name args = fn_args? EOS? END {
     let args = match args with
     | Some(a) -> a
     | None -> []
@@ -175,7 +179,7 @@ func:
     ExprFunc(fn, args, body) |> loc_annot_expr ($symbolstartpos, $endpos(args))
   }
   // Multi-line function
-  | DEF fn = ID args = fn_args? EOS? body = nonempty_list(top_statement) END {
+  | DEF fn = method_name args = fn_args? EOS? body = nonempty_list(top_statement) END {
     let args = match args with
     | Some(a) -> a
     | None -> []
@@ -187,7 +191,7 @@ func:
     ExprFunc(fn, args, body_expr) |> loc_annot_expr ($symbolstartpos, $endpos(args))
   }
   // Single line function
-  | DEF fn = ID args = fn_args? EOS? body = statement END {
+  | DEF fn = method_name args = fn_args? EOS? body = statement END {
     let args = match args with
     | Some(a) -> a
     | None -> []
@@ -196,6 +200,9 @@ func:
     let body_expr = ExprBlock(body, empty_body) |> loc_annot_expr $loc(body) in
     ExprFunc(fn, args, body_expr) |> loc_annot_expr ($symbolstartpos, $endpos(args))
   }
+  %inline method_name:
+  | name = ID { name }
+  | SELF DOT name = METHOD { "self." ^ name }
   ;
 
 class_def:
@@ -287,12 +294,20 @@ fn_args:
   }
   %inline param:
   | id = ID {
-    ((id, Any), Positional)
+    (id, None, Positional)
   }
-  | p = separated_pair(ID, EQ, primitive) { 
-    (p, Positional)
+  | id = ID EQ v = default_value { 
+    (id, Some v, Positional)
   }
-  | p = separated_pair(ID, COLON, primitive) { (p, Keyword) }
+  | id = ID COLON v = default_value? { (id, v, Keyword) }
+  %inline default_value:
+  | p = primitive { ExprValue p }
+  | c = const { let (constant, _loc) = c in constant }
+  | iv = iv_identifier { ExprIVar iv }
+  | id = ID {
+    let caller = ExprValue(Nil) |> loc_annot_expr $sloc in
+    ExprCall (caller, id, ([], None))
+  }
   ;
 
 call_args:

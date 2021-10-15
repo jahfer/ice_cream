@@ -18,7 +18,7 @@ let eval_env ~dir =
     print_endline "\n==========================\n";
   );
 
-  (* index
+  index
   |> Query.(query_all ~f:(is_a Method)) ~flatten:true
   |> tap (fun _ -> print_endline "# Method parameter usage\n")
   |> List.iter @@ fun node ->
@@ -32,26 +32,13 @@ let eval_env ~dir =
     |> List.filter @@ fun n ->
       List.mem (Query.string_attr "name" n) param_names in
 
-    List.iter (fun n -> 
+    usages |> List.iter @@ fun n -> 
       let name = Query.string_attr "name" n in
       Printf.printf "In method `#%s`, param `%s` used:\n%s\n%s\n"
         method_name
         name
         (Location.loc_as_docstr (Node.location n))
         (Location.loc_as_string (Node.location n))
-    ) usages *)
-  
-  index
-  |> Query.(query_all ~f:(is_a Method)) ~flatten:true
-  |> List.iter (fun node ->
-    print_endline @@ "# Original code:";
-    print_endline @@ Location.loc_as_string (Node.location node);
-    print_endline @@ "# RBS:";
-    print_endline @@ Node.to_rbs node;
-    print_endline @@ "\n# AST node:";
-    print_endline @@ Node.pretty_print node;
-    print_endline "\n==========================\n";
-  )
 
 let check_env ~dir =
   let result = Environment.make ()
