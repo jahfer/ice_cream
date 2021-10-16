@@ -23,7 +23,7 @@ let eval_env ~dir =
   |> tap (fun _ -> print_endline "# Method parameter usage\n")
   |> List.iter @@ fun node ->
     let method_name = Query.string_attr "name" node
-    and param_names = Query.string_list_attr "parameters" node in
+    and param_names = Query.string_list_attr "parameter_names" node in
 
     let usages = node
     |> Node.children
