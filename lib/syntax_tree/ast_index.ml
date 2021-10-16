@@ -204,8 +204,9 @@ module AssignmentNode = struct
     let location t = t.target.location
     let children t = Some ((RefNode.from_data t.target) :: [t.value])
     let parent _ = None
-    let attributes _t = let open Node.Attr in [
+    let attributes t = let open Node.Attr in [
       ("node_type", Str_ "Assignment");
+      ("target", Node.Node_ (RefNode.from_data t.target))
     ]
 
     (* let to_rbs t = match t.target.reftype with
