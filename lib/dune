@@ -2,5 +2,5 @@
 
 (library
   (public_name ice_cream)
-  (libraries ANSITerminal)
+  (libraries ANSITerminal eio_main domainslib)
   (flags :standard -warn-error A-51))

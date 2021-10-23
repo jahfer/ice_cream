@@ -1,5 +1,6 @@
 open Lexing
 open Lexer
+open Eio.Std
 
 type syntax_tree = Location.t Ast.expression list
 type declarations = Ast.Declarations.decl list
@@ -71,8 +72,7 @@ let parse_buffer parser lexbuf =
     | None -> acc in
   build_untyped_ast lexbuf []
 
-let import (file : Filesystem.file) (environment : t) : t =
-  Printf.printf "Importing file:  `%s`\n" file.name;
+let import (environment : t) (file : Filesystem.file) : t =
   let lexfn = (fun parsefn lexbuf ->
       lexbuf.lex_curr_p <- { lexbuf.lex_curr_p with pos_fname = file.name }; parsefn lexbuf) in
   let ruby_parser = (lexfn (parse_buffer parse_ruby)) in
@@ -82,7 +82,39 @@ let import (file : Filesystem.file) (environment : t) : t =
   | RBS -> let declarations = Filesystem.lexbuf_of_file file.name rbs_parser in {environment with declarations }
   | Uunsupported -> raise (Failure "Whoops!")
 
-let import_dir ?(filetypes=[Filesystem.Ruby; RBS]) (directory : string) (environment : t)  : t =
-  List.fold_left
+module C = Domainslib.Chan
+let num_domains = 4
+type 'a message = Task of 'a | Quit
+let c = C.make_unbounded ()
+
+let rec worker f () =
+  match C.recv c with
+  | Task a ->
+      f a;
+      worker f ()
+  | Quit -> ()
+
+let create_work tasks =
+  List.iter (fun t -> C.send c (Task t)) tasks;
+  for _ = 1 to num_domains do
+    C.send c Quit
+  done
+
+let import_dir ?(filetypes=[Filesystem.Ruby; RBS]) (directory : string) (environment : t) : t =
+  let () = Eio_main.run (fun env ->
+    let _cwd = Eio.Stdenv.cwd env in
+    let domain_mgr = Eio.Stdenv.domain_mgr env in
+    Switch.top (fun sw ->
+      let files = Filesystem.(files_of_dir filetypes directory) in
+      create_work files;
+      let work = (fun (f : Filesystem.file) ->
+        traceln "[DOMAIN %d] Processing %s" (Domain.self() :> int) f.name;
+        ignore @@ import (make ()) f) in
+      for _ = 1 to num_domains do
+        Fibre.fork_ignore ~sw (fun () -> Eio.Domain_manager.run_compute_unsafe domain_mgr (worker work))
+      done)) in
+  environment
+
+  (* List.fold_left
     (fun env filename -> import filename env) environment
-    Filesystem.(files_of_dir filetypes directory)
+    Filesystem.(files_of_dir filetypes directory) *)
