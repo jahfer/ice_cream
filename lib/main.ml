@@ -24,7 +24,7 @@ let param_usages index = let open Ast_index.Type in
     |> List.filter @@ fun n ->
       List.mem (Query.string_attr "name" n) param_names in
 
-    usages |> List.iter @@ fun n -> 
+    usages |> List.iter @@ fun n ->
       let name = Query.string_attr "name" n in
       Printf.printf "In method `#%s`, param `%s` used:\n%s\n%s\n"
         method_name
@@ -55,9 +55,10 @@ let unused_params index =
     ) param_names in
 
     if List.length non_usages > 0 then begin
-      prerr_string [Bold; red] "\n [UNUSED PARAMS]";
-      eprintf [Bold; white] " %s \n" (Node.to_rbs method_node);
-      List.iter (fun p -> eprintf [white] "-- `%s` not used\n" p) non_usages
+      prerr_string [Bold; red] "\n[UNUSED PARAMS]";
+      eprintf [white] " %s\n\n" (Location.loc_as_docstr (Node.location method_node));
+      eprintf [Bold; white] "%s\n" (Node.to_rbs method_node);
+      List.iter (fun p -> eprintf [white] " \u{2014} `%s` not used\n" p) non_usages
     end
 
 let eval_env ~dir =
@@ -67,7 +68,7 @@ let eval_env ~dir =
   |> Ast_index.create in
 
   dump_nodes index;
-  (* param_usages index; *)
+  param_usages index;
   unused_params index
   
 let check_env ~dir =
