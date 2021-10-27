@@ -109,10 +109,17 @@ let import (file : Filesystem.file) (environment : t) : t =
 let import_dir ?(filetypes=[Filesystem.Ruby; RBS]) (directory : string) (environment : t) : t =
   let open Filesystem in
   let env = ref environment in
-  let () = try_with (yield_files filetypes) directory {
-    effc = fun (type a) (e : a eff) -> match e with
-    | YieldFile f -> Some (fun (k : (a, _) continuation) ->
-      env := import f !env; continue k ()
-    )
-    | _ -> failwith "Unexpected effect performed"
-  } in !env
+  let read_dir dir = 
+    try_with (yield_files filetypes) dir {
+      effc = fun (type a) (e : a eff) -> match e with
+      | YieldFile f -> Some (fun (k : (a, _) continuation) ->
+        env := import f !env; continue k ()
+      )
+      | YieldDir d -> Some (fun (k : (a, _) continuation) ->
+        let action = if String.contains d '.' then IgnoreDir else ReadDir in
+        continue k action
+      )
+      | _ -> failwith "Unexpected effect performed"
+    } in
+  let () = read_dir directory in
+  !env
