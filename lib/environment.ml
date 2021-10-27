@@ -1,5 +1,7 @@
 open Lexing
 open Lexer
+open EffectHandlers
+open EffectHandlers.Deep
 
 type syntax_tree = Location.t Ast.expression list
 type declarations = Ast.Declarations.decl list
@@ -30,26 +32,28 @@ module Printer = struct
     ANSITerminal.(sprintf [white] "%s:%d:%d" pos.pos_fname)
       pos.pos_lnum (pos.pos_cnum - pos.pos_bol + 1)
 
-  let syntax_err lexbuf msg = 
-    ANSITerminal.(eprintf [white; on_red; Bold] " %s "  msg);
-    ANSITerminal.(eprintf [default] " %s\n"(print_position lexbuf));
-    ANSITerminal.(prerr_string [default] (Location.loc_as_string {
+  let syntax_err lexbuf msg =
+    let open ANSITerminal in
+    eprintf [white; on_red; Bold] " %s "  msg;
+    eprintf [default] " %s\n"(print_position lexbuf);
+    prerr_string [default] (Location.loc_as_string {
       id = 1;
       start_pos = lexbuf.lex_start_p;
       end_pos = lexbuf.lex_curr_p 
-    }));
-    ANSITerminal.(prerr_string [default] "\n")
+    });
+    prerr_string [default] "\n"
 
   let parser_err lexbuf =
+    let open ANSITerminal in
     let tok = Lexing.lexeme lexbuf in
-    ANSITerminal.(eprintf [white; on_red; Bold] " Syntax error ('%s') " tok);
-    ANSITerminal.(eprintf [default] " %s\n"(print_position lexbuf));
-    ANSITerminal.(prerr_string [default] (Location.loc_as_string {
+    eprintf [white; on_red; Bold] " Syntax error ('%s') " tok;
+    eprintf [default] " %s\n"(print_position lexbuf);
+    prerr_string [default] (Location.loc_as_string {
       id = 1;
       start_pos = lexbuf.lex_start_p;
       end_pos = lexbuf.lex_curr_p 
-    }));
-    ANSITerminal.(prerr_string [default] "\n")
+    });
+    prerr_string [default] "\n"
 end
 
 let parse_ruby lexbuf =
@@ -71,16 +75,36 @@ let parse_buffer parser lexbuf =
     | None -> acc in
   build_untyped_ast lexbuf []
 
+module Witness = struct
+  open Filesystem
+  type _ witness +=
+    | Ast : Location.t Ast.expression list witness
+    | Decl : Ast.Declarations.decl list witness
+end
+
 let import (file : Filesystem.file) (environment : t) : t =
   Printf.printf "Importing file:  `%s`\n" file.name;
-  let lexfn = (fun parsefn lexbuf ->
-      lexbuf.lex_curr_p <- { lexbuf.lex_curr_p with pos_fname = file.name }; parsefn lexbuf) in
-  let ruby_parser = (lexfn (parse_buffer parse_ruby)) in
-  let rbs_parser = (lexfn (parse_buffer parse_rbs)) in
-  match file.filetype with
-  | Ruby -> let ast = Filesystem.lexbuf_of_file file.name ruby_parser in { environment with ast }
-  | RBS -> let declarations = Filesystem.lexbuf_of_file file.name rbs_parser in {environment with declarations }
-  | Uunsupported -> raise (Failure "Whoops!")
+  let open Filesystem in
+  match try_with lex_file file {  
+    effc = fun (type a) (e : a eff) -> match e with
+    | StartLexing l -> Some (fun (k : (a, _) continuation) ->
+      l.lex_curr_p <- { l.lex_curr_p with pos_fname = file.name };
+      continue k ()
+    )
+    | LexRuby l -> Some (fun (k : (a, _) continuation) ->
+      let parser = parse_buffer parse_ruby in
+      continue k (LexResult (Witness.Ast, (parser l)))
+    )
+    | LexRBS l -> Some (fun (k : (a, _) continuation) ->
+      let parser = parse_buffer parse_rbs in
+      continue k (LexResult (Witness.Decl, (parser l)))
+    )
+    | _ -> None
+  } with
+  | Some LexResult (Witness.Ast, ast) -> { environment with ast }
+  | Some LexResult (Witness.Decl, declarations) -> { environment with declarations }
+  | None -> environment
+  | _ -> failwith "Unreachable!"
 
 let import_dir ?(filetypes=[Filesystem.Ruby; RBS]) (directory : string) (environment : t)  : t =
   List.fold_left

@@ -68,7 +68,7 @@ let eval_env ~dir =
   |> Ast_index.create in
 
   dump_nodes index;
-  param_usages index;
+  (* param_usages index; *)
   unused_params index
   
 let check_env ~dir =

@@ -1,21 +1,33 @@
 open Lexing
+open EffectHandlers
 
-type filetype = Ruby | RBS | Uunsupported
+type filetype = Ruby | RBS | Unsupported
 
 type file = {
   filetype : filetype;
   name : string
 }
 
-let lexbuf_of_file : type a. string -> (lexbuf -> a) -> a = fun filename f ->
-  let inx = open_in filename in
+type 'a witness = ..
+type lex_result = LexResult : 'a witness * 'a -> lex_result
+
+type _ eff += LexRuby : lexbuf -> lex_result eff
+type _ eff += LexRBS : lexbuf -> lex_result eff
+type _ eff += StartLexing : lexbuf -> unit eff
+
+let lex_file file =
+  let inx = open_in file.name in
   let lexbuf = Lexing.from_channel inx in
-  let result = f lexbuf in
+  perform (StartLexing lexbuf);
+  let result = match file.filetype with
+  | Ruby -> let x = perform (LexRuby lexbuf) in Some x
+  | RBS -> let x = perform (LexRBS lexbuf) in Some x
+  | Unsupported -> None in
   close_in inx;
   result
 
 let files_of_dir (filetypes : filetype list) (directory : string) : file list =
-  let ext_to_filetype f = match (Filename.extension f) with ".rb" -> Ruby | ".rbs" -> RBS | _ -> Uunsupported in
+  let ext_to_filetype f = match (Filename.extension f) with ".rb" -> Ruby | ".rbs" -> RBS | _ -> Unsupported in
   let filename_to_file name = { name; filetype = ext_to_filetype name } in
   let rec find_files files = function
   | dir :: fs when Sys.is_directory dir -> 
