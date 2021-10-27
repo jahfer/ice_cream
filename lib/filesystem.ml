@@ -26,17 +26,18 @@ let lex_file file =
   close_in inx;
   result
 
-let files_of_dir (filetypes : filetype list) (directory : string) : file list =
+type _ eff += YieldFile : file -> unit eff
+
+let yield_files (filetypes : filetype list) (directory : string) : unit =
   let ext_to_filetype f = match (Filename.extension f) with ".rb" -> Ruby | ".rbs" -> RBS | _ -> Unsupported in
   let filename_to_file name = { name; filetype = ext_to_filetype name } in
-  let rec find_files files = function
+  let rec find_files = function
   | dir :: fs when Sys.is_directory dir -> 
-    let found_files = Sys.readdir dir
-    |> Array.to_list
-    |> List.map (Filename.concat dir)
-    |> find_files []
-    in find_files (List.rev_append files found_files) fs
-  | f :: fs when (List.mem (ext_to_filetype f) filetypes) -> find_files ((filename_to_file f) :: files) fs
-  | _ :: fs -> find_files files fs
-  | [] -> files
-  in find_files [] [directory]
+    Sys.readdir dir |> Array.to_list |> List.map (Filename.concat dir) |> find_files;
+    find_files fs
+  | f :: fs when (List.mem (ext_to_filetype f) filetypes) -> 
+    perform (YieldFile (filename_to_file f));
+    find_files fs
+  | _ :: fs -> find_files fs
+  | [] -> ()
+  in find_files [directory]

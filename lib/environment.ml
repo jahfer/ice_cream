@@ -106,7 +106,13 @@ let import (file : Filesystem.file) (environment : t) : t =
   | None -> environment
   | _ -> failwith "Unreachable!"
 
-let import_dir ?(filetypes=[Filesystem.Ruby; RBS]) (directory : string) (environment : t)  : t =
-  List.fold_left
-    (fun env filename -> import filename env) environment
-    Filesystem.(files_of_dir filetypes directory)
+let import_dir ?(filetypes=[Filesystem.Ruby; RBS]) (directory : string) (environment : t) : t =
+  let open Filesystem in
+  let env = ref environment in
+  let () = try_with (yield_files filetypes) directory {
+    effc = fun (type a) (e : a eff) -> match e with
+    | YieldFile f -> Some (fun (k : (a, _) continuation) ->
+      env := import f !env; continue k ()
+    )
+    | _ -> failwith "Unexpected effect performed"
+  } in !env
