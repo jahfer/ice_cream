@@ -11,7 +11,7 @@
 %token <string> ID METHOD IVAR ARR_IDX
 %token <string> CONST
 %token EQ DEF END LAMBDA DOT CLASSDEF MODDEF PIPE
-%token DO 
+%token DO
 
 // RBS-specific
 %token DECL_ARR
@@ -334,7 +334,7 @@ const:
     | None -> clist 
     in 
     match List.rev clist with
-    | [] -> $syntaxerror
+    | [] -> raise (Failure "Syntax error: empty constant")
     | const :: nesting -> 
       let nesting_t = List.map (fun x -> (x, Any)) nesting in
       ExprConst((const, Any), nesting_t) |> loc_annot_expr $sloc

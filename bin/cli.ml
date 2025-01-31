@@ -15,10 +15,10 @@ let check_type_decls =
 
 let cmd =
   let doc = "Parse and display Ruby" in
-  let exits = Term.default_exits in
-  Term.(ret (const rbt $ check_type_decls $ dir)),
-  Term.info "rbt" ~version:"1.0.2" ~exits ~doc
+  let exits = Cmd.Exit.defaults in
+  let term = Term.(ret (const rbt $ check_type_decls $ dir)) in
+  Cmd.v (Cmd.info "rbt" ~version:"1.0.2" ~exits ~doc) term
 
 let () =
-  Term.(exit @@ eval cmd)
+  exit @@ Cmd.eval cmd
 

@@ -1,7 +1,6 @@
 open Lexing
 open Lexer
-open EffectHandlers
-open EffectHandlers.Deep
+open Effect.Deep
 
 type syntax_tree = Location.t Ast.expression list
 type declarations = Ast.Declarations.decl list

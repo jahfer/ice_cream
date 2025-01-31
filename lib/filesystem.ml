@@ -1,5 +1,5 @@
 open Lexing
-open EffectHandlers
+open Effect
 
 type filetype = Ruby | RBS | Unsupported
 
